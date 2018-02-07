@@ -183,6 +183,8 @@ class HTTP11Response(object):
 
     def read_chunked_give_size(self, amt=None, decode_content=True):
         """
+        generator: yields -1 to denote end of a segment for our usecase
+        
         Reads chunked transfer encoded bodies. This method returns a generator:
         each iteration of which yields one chunk *unless* the chunks are
         compressed, in which case it yields whatever the decompressor provides
@@ -267,7 +269,7 @@ class HTTP11Response(object):
             # because self._length might be None.
             if end_of_request:
                 self.close(socket_close=self._expect_close)
-                yield data
+                yield data ''' to release last chunk and signal the end using -1'''  
                 yield -1
         
             yield data
