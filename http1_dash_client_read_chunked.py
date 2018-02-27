@@ -121,8 +121,8 @@ def get_mpd(url):
     segment_size=0
     chunk_number=0
     total_data_dl_time=0
-    for mpd_data in mpd_conn.read_chunked_give_size(DOWNLOAD_CHUNK):
-        if (mpd_data is -1):
+    for mpd_data in mpd_conn.read_chunked_give_size(DOWNLOAD_CHUNK): #<-- this API is a generator and returns -1 after data for 
+        if (mpd_data is -1):					     # 	  a response is read
             print("saw b:",len(t),"chunks:",chunk_dl_rates)
             #exit()
             break
