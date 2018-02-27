@@ -120,9 +120,10 @@ def get_mpd(url):
     segment_size=0
     chunk_number=0
     total_data_dl_time=0
-#    for mpd_data in mpd_conn.read_proper_chunks(int(DOWNLOAD_CHUNK)):
-    mpd_data = mpd_conn.read(int(DOWNLOAD_CHUNK))
-    while mpd_data:
+    #how to use the API
+    mpd_data = mpd_conn.read(int(DOWNLOAD_CHUNK)) #<--- assign at the start to enter the while loop and read buffer 
+						  #	in units of chunks iteratively 
+    while mpd_data: #<---
         segment_size += len(mpd_data)
         timenow = timeit.default_timer()
         chunk_dl_time = timenow - chunk_start_time
@@ -140,8 +141,9 @@ def get_mpd(url):
             #exit()
             break
         
-        mpd_data = mpd_conn.read(int(DOWNLOAD_CHUNK))
-        #print("MPD seg:#",mpd_data)
+        mpd_data = mpd_conn.read(int(DOWNLOAD_CHUNK)) #<--- reassign at the end to continue in the while loop 
+						      #	    till we have response data
+        #end of how to use the API
 
     mpd_file_handle.close()
     mpd_conn.close()
