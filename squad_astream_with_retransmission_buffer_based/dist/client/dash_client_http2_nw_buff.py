@@ -73,6 +73,18 @@ class DashPlayback:
         self.audio = dict()
         self.video = dict()
 
+class SegmentDownloadStats:
+    """
+    Audio[bandwidth] : {duration, url_list}
+    Video[bandwidth] : {duration, url_list}
+    """
+    def __init__(self):
+
+        self.segment_size = 0
+        self.segment_filename = None
+        self.segment_chunks = []
+
+
 
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
@@ -182,11 +194,12 @@ def download_segment(segment_url, dash_folder):
     segment_path = '{uri.path}'.format(uri=parsed_uri)
     while segment_path.startswith('/'):
         segment_path = segment_path[1:]        
-    segment_filename = os.path.join(dash_folder, os.path.basename(segment_path))
-    make_sure_path_exists(os.path.dirname(segment_filename))
+    seg_dw_object = SegmentDownloadStats()
+    seg_dw_object.segment_filename = os.path.join(dash_folder, os.path.basename(segment_path))
+    make_sure_path_exists(os.path.dirname(seg_dw_object.segment_filename))
     #segment_file_handle = open(segment_filename, 'wb')
     chunk_dl_rates = []
-    segment_size = 0
+    #segment_size = 0
     try:
         #print segment_url
         total_data_dl_time = 0
@@ -200,14 +213,14 @@ def download_segment(segment_url, dash_folder):
         chunk_start_time = timeit.default_timer()
         #seg_conn = connection.request('GET', segment_url) 
         #with closing(connection.get(segment_url, stream=True)) as seg_conn:
-        with open(segment_filename,'wb') as segment_file_handle:
+        with open(seg_dw_object.segment_filename,'wb') as segment_file_handle:
             segment_data = seg_conn.read(DOWNLOAD_CHUNK)
             while segment_data:
 #                    with open('/mnt/QUIClientServer0/data_read_mod_chunk_hyper_HTTP2','ab') as movie:
 #                        movie.write(segment_data)
 
                     segment_file_handle.write(segment_data)
-                    segment_size += len(segment_data)
+                    seg_dw_object.segment_size += len(segment_data)
                     timenow = timeit.default_timer()
                     chunk_dl_time = timenow - chunk_start_time
                     chunk_start_time=timenow
@@ -226,7 +239,7 @@ def download_segment(segment_url, dash_folder):
                                 chk.write(",%s" %item)
                             chk.write("\n")
                         
-                        segment_w_chunks.append(chunk_dl_rates)
+                        seg_dw_object.segment_chunks.append(chunk_dl_rates)
               #          with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
               #              rate_f.write("\n End of segment:{}\n".format(segment_url))
                         break
@@ -244,50 +257,50 @@ def download_segment(segment_url, dash_folder):
     #seg_conn.release_conn()
     seg_conn.close()
     segment_file_handle.close()
-
-    return segment_size, segment_filename, segment_w_chunks
+    ''' Use Queue to get the seg_dw_object'''
+    return seg_dw_object.segment_size, seg_dw_object.segment_filename, seg_dw_object.segment_chunks
 
 def retx_download_segment(retx_segment_url, dash_folder):
-    """ Module to download the retx segment """
     #parse_url = urlparse.urlparse(segment_url)
     #connection = HTTPConnectionPool(parse_url.netloc)
     #chunk_dl_rates = []
     parsed_uri = urllib.parse.urlparse(retx_segment_url)
-    retx_segment_path = '{uri.path}'.format(uri=parsed_uri)
-    while retx_segment_path.startswith('/'):
-        retx_segment_path = segment_path[1:]        
-    retx_segment_filename = os.path.join(dash_folder, os.path.basename(retx_segment_path))
-    make_sure_path_exists(os.path.dirname(retx_segment_filename))
+    segment_path = '{uri.path}'.format(uri=parsed_uri)
+    while segment_path.startswith('/'):
+        segment_path = segment_path[1:]        
+    retx_seg_dw_object = SegmentDownloadStats()
+    retx_seg_dw_object.segment_filename = os.path.join(dash_folder, os.path.basename(segment_path))
+    make_sure_path_exists(os.path.dirname(retx_seg_dw_object.segment_filename))
     #segment_file_handle = open(segment_filename, 'wb')
     chunk_dl_rates = []
-    retx_segment_size = 0
+    #segment_size = 0
     try:
         #print segment_url
         total_data_dl_time = 0
         
         
-        retx_seg_resp_conn = connection.request('GET',parsed_uri.path)
-        retx_seg_conn = connection.get_response(retx_seg_resp_conn)
+        seg_resp_conn = connection.request('GET',parsed_uri.path)
+        seg_conn = connection.get_response(seg_resp_conn)
 
 
         chunk_number = 0
         chunk_start_time = timeit.default_timer()
         #seg_conn = connection.request('GET', segment_url) 
         #with closing(connection.get(segment_url, stream=True)) as seg_conn:
-        with open(retx_segment_filename,'wb') as retx_segment_file_handle:
-            retx_segment_data = retx_seg_conn.read(DOWNLOAD_CHUNK)
-            while retx_segment_data:
+        with open(retx_seg_dw_object.segment_filename,'wb') as segment_file_handle:
+            segment_data = seg_conn.read(DOWNLOAD_CHUNK)
+            while segment_data:
 #                    with open('/mnt/QUIClientServer0/data_read_mod_chunk_hyper_HTTP2','ab') as movie:
 #                        movie.write(segment_data)
 
-                    retx_segment_file_handle.write(segment_data)
-                    retx_segment_size += len(segment_data)
+                    segment_file_handle.write(segment_data)
+                    retx_seg_dw_object.segment_size += len(segment_data)
                     timenow = timeit.default_timer()
                     chunk_dl_time = timenow - chunk_start_time
                     chunk_start_time=timenow
                     chunk_number += 1
                     total_data_dl_time += chunk_dl_time
-                    current_chunk_dl_rate = retx_segment_size * 8 / total_data_dl_time
+                    current_chunk_dl_rate = segment_size * 8 / total_data_dl_time
                     chunk_dl_rates.append(current_chunk_dl_rate)
              #       with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
              #           rate_f.write(str(segment_size)+'\t'+str(total_data_dl_time)+'\t'+str(current_chunk_dl_rate)+'\n')
@@ -300,12 +313,12 @@ def retx_download_segment(retx_segment_url, dash_folder):
                                 chk.write(",%s" %item)
                             chk.write("\n")
                         
-                        segment_w_chunks.append(chunk_dl_rates) ''' used by both streams TODO: urgent'''
+                        retx_seg_dw_object.segment_chunks.append(chunk_dl_rates)
               #          with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
               #              rate_f.write("\n End of segment:{}\n".format(segment_url))
                         break
 
-                    retx_segment_data = retx_seg_conn.read(DOWNLOAD_CHUNK)
+                    segment_data = seg_conn.read(DOWNLOAD_CHUNK)
 
     except hyper.http20.exceptions.HTTP20Error as error:
         config_dash.LOG.error("Unable to download DASH Segment {} HTTP Error:{} ".format(segment_url, str(error.code)))
@@ -316,10 +329,10 @@ def retx_download_segment(retx_segment_url, dash_folder):
     
     #connection.close()
     #seg_conn.release_conn()
-    retx_seg_conn.close()
-    retx_segment_file_handle.close()
-
-    return retx_segment_size, retx_segment_filename, segment_w_chunks ''' TODO: segment_w_chunks'''
+    seg_conn.close()
+    segment_file_handle.close()
+    ''' Use Queue to get the retx_seg_dw_object'''
+    return retx_seg_dw_object.segment_size, retx_seg_dw_object.segment_filename, retx_seg_dw_object.segment_chunks ''' TODO: segment_w_chunks'''
 
 
 def get_media_all(domain, media_info, file_identifier, done_queue):
@@ -747,11 +760,14 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 #retx_segment_path = dp_list[retx_segment_number][retx_current_bitrate]
                 #retx_segment_url = urllib.parse.urljoin(domain, retx_segment_path)
                 #retx_thread = threading.Thread(target=retx_download_seg, args=(retx_segment_url, file_identifier))
-            '''TODO: Write json to buffer'''
+                '''TODO: Write json to buffer'''
+                #only need to lock call to: dash_player.write(retx_segment_info)
             '''TODO: CHECK If delay again'''
             config_dash.LOG.info("{}: Started downloading segment {}".format(playback_type.upper(), segment_url))
             ''' TODO: thread join for normal segment (Optional: then join retx thread)'''
             segment_size, segment_filename, segment_w_chunks = download_segment(segment_url, file_identifier)
+            ''' lock apped into segment_w_chunks'''
+            #segment_w_chunks.append(seg_dw_object.segment_chunks)
             config_dash.LOG.info("{}: Finished Downloaded segment {}".format(playback_type.upper(), segment_url))
         except IOError as e:
             config_dash.LOG.error("Unable to save segment %s" % e)
