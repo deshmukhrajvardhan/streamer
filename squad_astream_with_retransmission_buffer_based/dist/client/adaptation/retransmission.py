@@ -8,6 +8,7 @@ def get_segment_sizes(dp_object, segment_number):
 def retransmission(dp_object, current_bitrate, segment_number, buffer_dict, bitrates, segment_download_rate, buffer_max, video_segment_duration):
     segment_download_rate *= 8
     MAX_GAP_WIDTH = 7
+    retx_flag = False
     q_layers_in_buffer = []
     bitrates_in_buffer = []
     segment_numbers = []
@@ -101,6 +102,7 @@ def retransmission(dp_object, current_bitrate, segment_number, buffer_dict, bitr
     if RETRANSMIT == True and segment_index >= segment_numbers[0]:
         print ("---------------Retransmit initialized----------------")
         print ("NEW Bitrate:" + str(bitrates[q_layer_retransmit]))
-        return bitrates[q_layer_retransmit], segment_index
+        retx_flag = False
+        return bitrates[q_layer_retransmit], segment_index, retx_flag
     else:
-        return current_bitrate, segment_number
+        return current_bitrate, segment_number, retx_flag
