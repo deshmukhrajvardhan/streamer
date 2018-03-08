@@ -741,24 +741,28 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         start_time = timeit.default_timer()
         try:
             ''' We want both if retx'''
-            ''' DOUBT: Don't check for delay (buff full?) as we replace'''
+            ''' DOUBT(solved): Don't check for delay (buff full?) as we replace'''
+            ''' DOUBT: should we wait (thread join) for retx_seg to download (have to check b4 retx.py called)?'''
             if retx_flag: '''TODO: call retx_dw_seg retx thread'''
-                #retx_download_seg (retx_seg_url, file_identifier)
-            '''TODO: Write to buffer'''
+                #retx_segment_path = dp_list[retx_segment_number][retx_current_bitrate]
+                #retx_segment_url = urllib.parse.urljoin(domain, retx_segment_path)
+                #retx_thread = threading.Thread(target=retx_download_seg, args=(retx_segment_url, file_identifier))
+            '''TODO: Write json to buffer'''
             '''TODO: CHECK If delay again'''
             config_dash.LOG.info("{}: Started downloading segment {}".format(playback_type.upper(), segment_url))
-            ''' TODO: thread join for normal segment'''
+            ''' TODO: thread join for normal segment (Optional: then join retx thread)'''
             segment_size, segment_filename, segment_w_chunks = download_segment(segment_url, file_identifier)
             config_dash.LOG.info("{}: Finished Downloaded segment {}".format(playback_type.upper(), segment_url))
         except IOError as e:
             config_dash.LOG.error("Unable to save segment %s" % e)
             return None
-        segment_download_time = timeit.default_timer() - start_time
+        ''' retx_seg_dw seperate and global (as one retx at a time) NO join?'''
+        segment_download_time = timeit.default_timer() - start_time ''' Create global and update in dw_seg()    (as one retx at a time)'''
         segment_download_rate = segment_size / segment_download_time
         #with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_seg_time_rate.txt', 'a') as rate_f:
         #    rate_f.write(str(segment_size)+'\t'+str(segment_download_time)+'\t'+str(segment_download_rate*8)+'\n')
-        previous_segment_times.append(segment_download_time)
-        recent_download_sizes.append(segment_size)
+        previous_segment_times.append(segment_download_time) '''not used for Emperical (SQUAD Case) '''
+        recent_download_sizes.append(segment_size) '''not used for Emperical (SQUAD Case) '''
         # Updating the JSON information
         segment_name = os.path.split(segment_url)[1]
         if "segment_info" not in config_dash.JSON_HANDLE:
