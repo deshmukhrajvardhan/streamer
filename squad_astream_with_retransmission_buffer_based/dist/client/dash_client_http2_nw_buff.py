@@ -599,9 +599,10 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                             emp.write("!!!!!!!RETRANSMISSION!!!!!!!!" + '\n')
                         print ("RETRANSMISSION_SWITCH = True !")
                         RETRANSMISSION_SWITCH = True
-                        original_segment_number = segment_number
-                        original_current_bitrate = current_bitrate
-                        current_bitrate, segment_number, retx_flag = retransmission.retransmission(dp_object, current_bitrate, segment_number, dash_player.buffer, bitrates, segment_download_rate, config_dash.NETFLIX_BUFFER_SIZE, video_segment_duration)
+                        ''' Don't need these as parallel streams need 2 segs and quals '''
+                        #original_segment_number = segment_number
+                        #original_current_bitrate = current_bitrate
+                        retx_current_bitrate, retx_segment_number, retx_flag = retransmission.retransmission(dp_object, current_bitrate, segment_number, dash_player.buffer, bitrates, segment_download_rate, config_dash.NETFLIX_BUFFER_SIZE, video_segment_duration)
                         if dash_player.buffer.__len__() < (RETRANS_THRESHOLD_LOWER * config_dash.NETFLIX_BUFFER_SIZE):
                             RETRANSMISSION_SWITCH = False
                         #dl_rate based retransmission:
@@ -665,6 +666,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             config_dash.LOG.debug("SLEPT for {}seconds ".format(time.time() - delay_start))
         start_time = timeit.default_timer()
         try:
+            ''' We want both if retx'''
+            if retx_flag:
+                #retx_download_seg (retx_seg_url, file_identifier)
             config_dash.LOG.info("{}: Started downloading segment {}".format(playback_type.upper(), segment_url))
             segment_size, segment_filename, segment_w_chunks = download_segment(segment_url, file_identifier)
             config_dash.LOG.info("{}: Finished Downloaded segment {}".format(playback_type.upper(), segment_url))
