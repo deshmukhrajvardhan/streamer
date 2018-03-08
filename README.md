@@ -6,7 +6,7 @@ client files used:
 2. Hyper library https [http1](../master/squad_astream_with_retransmission_buffer_based/dist/client/http1_dash_client_read_chunked.py)
 3. Hyper library https [http2](../master/squad_astream_with_retransmission_buffer_based/dist/client/dash_client_http2_nw_buff.py)
 
-## Command to run Astreamer with http2: (Note: check your directory path and ip)
+## Command to run Astreamer with retx over http2: (Note: check your directory path and ip)
 ```
 cd /mnt/QUIClientServer0/src/; time sudo python3 out/Debug/squad_astream_with_retransmission_buffer\
 _based/dist/client/dash_client_http2_nw_buff.py -m https://10.10.4.2/www-itec.uni-klu.ac.at/ftp/dat\
