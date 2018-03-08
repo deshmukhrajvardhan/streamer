@@ -346,17 +346,17 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     average_segment_sizes = netflix_rate_map = None
     netflix_state = "INITIAL"
     RETRANSMISSION_SWITCH = False
-    retransmission_delay = 0
-    retransmission_delay_switch = False
+    #retransmission_delay = 0 ''' not sure why its created, Unused'''
+    retx_flag = False
     # Start playback of all the segments
     #for segment_number, segment in enumerate(dp_list, dp_object.video[current_bitrate].start):
     #for segment_number in dp_list:s
     segment_number = 1
     original_segment_number = 1
     while segment_number < len(dp_list):
-        if retransmission_delay_switch == True:
+        #if retransmission_delay_switch == True:
             #segment_number = original_segment_number 
-            retransmission_delay_switch = False
+            #retransmission_delay_switch = False
         segment = segment_number
         #print len(dp_list)
         #print "dp_list"
@@ -601,18 +601,18 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         RETRANSMISSION_SWITCH = True
                         original_segment_number = segment_number
                         original_current_bitrate = current_bitrate
-                        current_bitrate, segment_number = retransmission.retransmission(dp_object, current_bitrate, segment_number, dash_player.buffer, bitrates, segment_download_rate, config_dash.NETFLIX_BUFFER_SIZE, video_segment_duration)
+                        current_bitrate, segment_number, retx_flag = retransmission.retransmission(dp_object, current_bitrate, segment_number, dash_player.buffer, bitrates, segment_download_rate, config_dash.NETFLIX_BUFFER_SIZE, video_segment_duration)
                         if dash_player.buffer.__len__() < (RETRANS_THRESHOLD_LOWER * config_dash.NETFLIX_BUFFER_SIZE):
                             RETRANSMISSION_SWITCH = False
                         #dl_rate based retransmission:
                         #if segment_number != original_segment_number and (curr_rate - current_bitrate >= original_current_bitrate):
-                        if segment_number != original_segment_number:
-                            retransmission_delay_switch = True
+                        if retx_flag:#segment_number != original_segment_number:
+                            #retransmission_delay_switch = True
                             seg_num_offset = - (original_segment_number - segment_number + 1)
                             bitrate_history.pop(seg_num_offset)
                             bitrate_history.insert(seg_num_offset, current_bitrate)
                             RETRANS_OFFSET = True
-                            retransmission_delay += 1
+                            #retransmission_delay += 1
                         with open('empirical-debug.txt', 'a') as emp:
                             #for item in bitrate_history:
                             #    emp.write("%s " % item)
@@ -701,8 +701,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         dash_player.write(segment_info)
         segment_files.append(segment_filename)
         segment_number += 1
-        if retransmission_delay_switch == True:
-            segment_number = original_segment_number
+        '''not used in parallel streams as we have 2 diff segs qual levels on 2 streams '''
+        #if retransmission_delay_switch == True: 
+        #    segment_number = original_segment_number
         #if segment_number > 10:
         #    if original_segment_number != segment_number:
         #        print "!!!!!!!!! not equal !!!!!!!!!!!!"
