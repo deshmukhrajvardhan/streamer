@@ -225,7 +225,7 @@ def download_segment(segment_url, dash_folder):
                     chunk_start_time=timenow
                     chunk_number += 1
                     total_data_dl_time += chunk_dl_time
-                    current_chunk_dl_rate = segment_size * 8 / total_data_dl_time
+                    current_chunk_dl_rate = seg_dw_object.segment_size * 8 / total_data_dl_time
                     seg_dw_object.segment_chunk_rates.append(current_chunk_dl_rate)
              #       with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
              #           rate_f.write(str(segment_size)+'\t'+str(total_data_dl_time)+'\t'+str(current_chunk_dl_rate)+'\n')
@@ -299,7 +299,7 @@ def retx_download_segment(retx_segment_url, dash_folder):
                     chunk_start_time=timenow
                     chunk_number += 1
                     total_data_dl_time += chunk_dl_time
-                    current_chunk_dl_rate = segment_size * 8 / total_data_dl_time
+                    current_chunk_dl_rate = retx_seg_dw_object.segment_size * 8 / total_data_dl_time
                     retx_seg_dw_object.segment_chunk_rates.append(current_chunk_dl_rate)
              #       with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
              #           rate_f.write(str(segment_size)+'\t'+str(total_data_dl_time)+'\t'+str(current_chunk_dl_rate)+'\n')
@@ -331,7 +331,8 @@ def retx_download_segment(retx_segment_url, dash_folder):
     seg_conn.close()
     segment_file_handle.close()
     ''' Use Queue to get the retx_seg_dw_object'''
-    return retx_seg_dw_object ''' TODO: segment_w_chunks'''
+    return retx_seg_dw_object 
+    ''' TODO: segment_w_chunks'''
 
 
 def get_media_all(domain, media_info, file_identifier, done_queue):
@@ -438,6 +439,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     # Start playback of all the segments
     #for segment_number, segment in enumerate(dp_list, dp_object.video[current_bitrate].start):
     #for segment_number in dp_list:s
+    segment_size=0
     segment_number = 1
     retx_segment_number = 1
     original_segment_number = 1
@@ -751,7 +753,10 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         ''' We want both if retx'''
         ''' DOUBT(solved): Don't check for delay (buff full?) as we replace'''
         ''' DOUBT(solved): should we wait (thread join) for retx_seg to download (have to check b4 retx.py called)?'''
-        if retx_flag: '''TODO: call retx_dw_seg retx thread'''
+        if retx_flag: 
+                '''TODO: call retx_dw_seg retx thread'''
+                 with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
+                    rtx_api_proof.write("IN RETX,{},{},{},{}".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_number))
                 retx_seg_dw_object = SegmentDownloadStats()
                 retx_segment_path = dp_list[retx_segment_number][retx_current_bitrate]
                 retx_segment_url = urllib.parse.urljoin(domain, retx_segment_path)
@@ -759,7 +764,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 retx_start_time = timeit.default_timer()
                 retx_seg_dw_object = retx_download_segment(retx_segment_url, file_identifier)
                 config_dash.LOG.info("{}: Downloaded Retxsegment {}".format(playback_type.upper(), retx_segment_url))
-                retx_segment_download_time = timeit.default_timer() - retx_start_time
+                retx_segment_download_time = timeit.default_timer() - retx_start_time #lock this as this is given to emperical_dash.py
                 #retx_thread = threading.Thread(target=retx_download_seg, args=(retx_segment_url, file_identifier))
                 segment_w_chunks.append(retx_seg_dw_object.segment_chunk_rates)
                 '''TODO: Create json'''
@@ -785,15 +790,16 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                                 'segment_layer': bitrates.index(retx_current_bitrate)}
                 segment_duration = retx_segment_info['playback_length']
                 
+                segment_size = retx_seg_dw_object.segment_size #lock this as this is given to emperical_dash.py
                 '''TODO: Write json to buffer'''
                 dash_player.write(retx_segment_info)
                 with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
-                    rtx_api_proof.write("".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
+                    rtx_api_proof.write("{},{},{},{},{}".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
                 #only need to lock call to: dash_player.write(retx_segment_info)
                 
                 
-                
-        if delay:''' TODO: Check it for normal case (not retx case)''' 
+        ''' TODO: Check it for normal case (not retx case)'''        
+        if delay: 
             delay_start = time.time()
             config_dash.LOG.info("SLEEPING for {}seconds ".format(delay*segment_duration))
             while time.time() - delay_start < (delay * segment_duration):
@@ -805,8 +811,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             config_dash.LOG.info("{}: Started downloading segment {}".format(playback_type.upper(), segment_url))
             seg_dw_object = SegmentDownloadStats()
             ''' TODO: thread join for normal segment (Optional: then join retx thread)'''
-            segment_size, segment_filename 
+            #segment_size, segment_filename 
             seg_dw_object = download_segment(segment_url, file_identifier)
+            segment_size=seg_dw_object.segment_size #lock this as this is given to emperical_dash.py
             ''' lock apped into segment_w_chunks'''
             segment_w_chunks.append(seg_dw_object.segment_chunk_rates)
             config_dash.LOG.info("{}: Finished Downloaded segment {}".format(playback_type.upper(), segment_url))
@@ -814,19 +821,22 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             config_dash.LOG.error("Unable to save segment %s" % e)
             return None
         ''' retx_seg_dw seperate and global (as one retx at a time) NO join?'''
-        segment_download_time = timeit.default_timer() - start_time ''' Create global and update in dw_seg()    (as one retx at a time)'''
-        segment_download_rate = segment_size / segment_download_time
+        segment_download_time = timeit.default_timer() - start_time #lock this as this is given to emperical_dash.py
+        ''' Create global and update in dw_seg()    (as one retx at a time)'''
+        segment_download_rate = seg_dw_object.segment_size / segment_download_time
         #with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_seg_time_rate.txt', 'a') as rate_f:
         #    rate_f.write(str(segment_size)+'\t'+str(segment_download_time)+'\t'+str(segment_download_rate*8)+'\n')
-        previous_segment_times.append(segment_download_time) '''not used for Emperical (SQUAD Case) '''
-        recent_download_sizes.append(segment_size) '''not used for Emperical (SQUAD Case) '''
+        previous_segment_times.append(segment_download_time) 
+        '''not used for Emperical (SQUAD Case) '''
+        recent_download_sizes.append(segment_size) 
+        '''not used for Emperical (SQUAD Case) '''
         # Updating the JSON information
         segment_name = os.path.split(segment_url)[1]
         if "segment_info" not in config_dash.JSON_HANDLE:
             config_dash.JSON_HANDLE["segment_info"] = list()
         config_dash.JSON_HANDLE["segment_info"].append((segment_name, current_bitrate, segment_size,
                                                         segment_download_time))
-        total_downloaded += segment_size
+        total_downloaded += seg_dw_object.segment_size
         config_dash.LOG.info("{} : The total downloaded = {}, segment_size = {}, segment_number = {}".format(
             playback_type.upper(),
             total_downloaded, segment_size, segment_number))
@@ -834,15 +844,16 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             weighted_mean_object.update_weighted_mean(segment_size, segment_download_time)
 
         segment_info = {'playback_length': video_segment_duration,
-                        'size': segment_size,
+                        'size': seg_dw_object.segment_size,
                         'bitrate': current_bitrate,
-                        'data': segment_filename,
+                        'data': seg_dw_object.segment_filename,
                         'URI': segment_url,
                         'segment_number': segment_number,
                         'segment_layer': bitrates.index(current_bitrate)}
         segment_duration = segment_info['playback_length']
-        dash_player.write(segment_info) '''TODO: Write seg_dw and retx_seg_dw stats'''
-        segment_files.append(segment_filename)
+        dash_player.write(segment_info) 
+        '''TODO: Write seg_dw and retx_seg_dw stats'''
+        segment_files.append(seg_dw_object.segment_filename)
         segment_number += 1
         '''not used in parallel streams as we have 2 diff segs qual levels on 2 streams '''
         #if retransmission_delay_switch == True: 
@@ -855,7 +866,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         #        retransmission_delay_switch = True
         #        #original_segment_number += 1
         config_dash.LOG.info("Download info: segment URL: %s. Size = %s in %s seconds" % (
-            segment_url, segment_size, str(segment_download_time)))
+            segment_url, seg_dw_object.segment_size, str(segment_download_time)))
         if previous_bitrate:
             if previous_bitrate < current_bitrate:
                 config_dash.JSON_HANDLE['playback_info']['up_shifts'] += 1
