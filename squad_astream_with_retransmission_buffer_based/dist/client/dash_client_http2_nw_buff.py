@@ -787,6 +787,8 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 
                 '''TODO: Write json to buffer'''
                 dash_player.write(retx_segment_info)
+                with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
+                    rtx_api_proof.write("".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
                 #only need to lock call to: dash_player.write(retx_segment_info)
                 
                 
