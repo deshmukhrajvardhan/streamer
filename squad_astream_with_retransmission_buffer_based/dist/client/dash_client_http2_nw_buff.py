@@ -772,8 +772,6 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         
         if retx_flag and (retx_segment_url is not segment_url): 
                 '''TODO: call retx_dw_seg retx thread'''
-                with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
-                    rtx_api_proof.write("IN RETX,{},{},{},{}".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_number))
                 retx_seg_dw_object = SegmentDownloadStats()
                 config_dash.LOG.info("{}: Started downloading retx_segment {}".format(playback_type.upper(), retx_segment_url))
                 retx_start_time = timeit.default_timer()
@@ -793,7 +791,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 
                 total_downloaded += retx_seg_dw_object.segment_size
                 config_dash.LOG.info("{} : The total downloaded = {}, segment_size = {}, segment_number = {}".format(playback_type.upper(),total_downloaded, retx_seg_dw_object.segment_size, retx_segment_number))
-                
+
+                with open(download_log_file,'a') as rtx_api_proof:
+                    rtx_api_proof.write("{},{},{},{},{}\n".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
                 if playback_type.upper() == "SMART" and weighted_mean_object:
                     weighted_mean_object.update_weighted_mean(segment_size, segment_download_time)
 
@@ -814,7 +814,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 '''TODO: Write json to buffer'''
                 dash_player.write(retx_segment_info)
                 with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
-                    rtx_api_proof.write("{},{},{},{},{}".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
+                    rtx_api_proof.write("{},{},{},{},{}\n".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
                 #only need to lock call to: dash_player.write(retx_segment_info)
                 
                 

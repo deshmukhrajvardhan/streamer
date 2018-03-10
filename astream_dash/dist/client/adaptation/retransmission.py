@@ -101,6 +101,8 @@ def retransmission(dp_object, current_bitrate, segment_number, buffer_dict, bitr
     if RETRANSMIT == True and segment_index >= segment_numbers[0]:
         print "---------------Retransmit initialized----------------"
         print "NEW Bitrate:" + str(bitrates[q_layer_retransmit])
+        with open("/mnt/QUIClientServer0/req_http1_retransmission",'a') as req_retx:
+            req_retx.write("{},{}\n".format(bitrates[q_layer_retransmit], segment_index))
         return bitrates[q_layer_retransmit], segment_index
     else:
         return current_bitrate, segment_number
