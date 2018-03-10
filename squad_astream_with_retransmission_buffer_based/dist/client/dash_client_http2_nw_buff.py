@@ -263,8 +263,8 @@ def retx_download_segment(retx_segment_url, dash_folder):
     #parse_url = urlparse.urlparse(segment_url)
     #connection = HTTPConnectionPool(parse_url.netloc)
     #chunk_dl_rates = []
-    with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
-        rtx_api_proof.write("IN RETX_dw_seg,{},{}\n".format(retx_segment_url, dash_folder))
+    #with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
+    #    rtx_api_proof.write("IN RETX_dw_seg,{},{}\n".format(retx_segment_url, dash_folder))
     parsed_uri = urllib.parse.urlparse(retx_segment_url)
     segment_path = '{uri.path}'.format(uri=parsed_uri)
     while segment_path.startswith('/'):
@@ -279,8 +279,8 @@ def retx_download_segment(retx_segment_url, dash_folder):
         #print segment_url
         total_data_dl_time = 0
         
-        with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
-            rtx_api_proof.write("IN RETX_dw_seg_conn_time,{}\n".format(retx_seg_dw_object.segment_filename))
+        #with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
+            #rtx_api_proof.write("IN RETX_dw_seg_conn_time,{}\n".format(retx_seg_dw_object.segment_filename))
         
         seg_resp_conn = connection.request('GET',parsed_uri.path)
         seg_conn = connection.get_response(seg_resp_conn)
@@ -296,8 +296,8 @@ def retx_download_segment(retx_segment_url, dash_folder):
 #                    with open('/mnt/QUIClientServer0/data_read_mod_chunk_hyper_HTTP2','ab') as movie:
 #                        movie.write(segment_data)
                     
-                    with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
-                        rtx_api_proof.write("IN RETX_dw_seg 1st chunk\n")
+                    #with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
+                        #rtx_api_proof.write("IN RETX_dw_seg 1st chunk\n")
                     segment_file_handle.write(segment_data)
                     retx_seg_dw_object.segment_size += len(segment_data)
                     timenow = timeit.default_timer()
@@ -710,9 +710,10 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         #if segment_number != original_segment_number and (curr_rate - current_bitrate >= original_current_bitrate):
                         if retx_flag:#segment_number != original_segment_number:
                             #retransmission_delay_switch = True
-                            seg_num_offset = - (original_segment_number - segment_number + 1)
+                            #seg_num_offset = - (original_segment_number - segment_number + 1)
+                            seg_num_offset = - (segment_number - retx_segment_number + 1)
                             bitrate_history.pop(seg_num_offset)
-                            bitrate_history.insert(seg_num_offset, current_bitrate)
+                            bitrate_history.insert(seg_num_offset, retx_current_bitrate)
                             RETRANS_OFFSET = True
                             #retransmission_delay += 1
                         with open('empirical-debug.txt', 'a') as emp:
@@ -763,14 +764,17 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         ''' We want both if retx'''
         ''' DOUBT(solved): Don't check for delay (buff full?) as we replace'''
         ''' DOUBT(solved): should we wait (thread join) for retx_seg to download (have to check b4 retx.py called)?'''
-        if retx_flag: 
+
+        ''' DOUBT: list entry corrosponding url as per LOGS'''
+        retx_segment_path = dp_list[retx_segment_number+1][retx_current_bitrate] # due to implementation
+        retx_segment_url = urllib.parse.urljoin(domain, retx_segment_path)
+
+        
+        if retx_flag and (retx_segment_url is not segment_url): 
                 '''TODO: call retx_dw_seg retx thread'''
                 with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
                     rtx_api_proof.write("IN RETX,{},{},{},{}".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_number))
                 retx_seg_dw_object = SegmentDownloadStats()
-                ''' DOUBT: list entry corrosponding url as per LOGS'''
-                retx_segment_path = dp_list[retx_segment_number+1][retx_current_bitrate] # due to implementation
-                retx_segment_url = urllib.parse.urljoin(domain, retx_segment_path)
                 config_dash.LOG.info("{}: Started downloading retx_segment {}".format(playback_type.upper(), retx_segment_url))
                 retx_start_time = timeit.default_timer()
                 retx_seg_dw_object = retx_download_segment(retx_segment_url, file_identifier)
