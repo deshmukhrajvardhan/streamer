@@ -104,7 +104,7 @@ def retransmission(dp_object, current_bitrate, segment_number, buffer_dict, bitr
         print ("NEW Bitrate:" + str(bitrates[q_layer_retransmit]))
         retx_flag = True
         with open("/mnt/QUIClientServer0/retx_api.txt",'a') as retx_api:
-            retx_api.write("{},{},{}".format(bitrates[q_layer_retransmit], segment_index, retx_flag))
+            retx_api.write("{},{},{}\n".format(bitrates[q_layer_retransmit], segment_index, retx_flag))
         return bitrates[q_layer_retransmit], segment_index, retx_flag
     else:
         return current_bitrate, segment_number, retx_flag
