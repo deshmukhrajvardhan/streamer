@@ -50,6 +50,8 @@ BUFFER_THRESHOLD_LOWER = 0.4
 RETRANS_THRESHOLD_UPPER = 0.6
 RETRANS_THRESHOLD_LOWER = 0.4
 
+normal_dw_count = 0
+
 # Globals for arg parser with the default values
 # Not sure if this is the correct way ....
 MPD = None
@@ -831,7 +833,10 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             config_dash.LOG.info("{}: Started downloading segment {}".format(playback_type.upper(), segment_url))
             seg_dw_object = SegmentDownloadStats()
             ''' TODO: thread join for normal segment (Optional: then join retx thread)'''
-            #segment_size, segment_filename 
+            #segment_size, segment_filename
+            normal_dw_count+=1
+            with open("/mnt/QUIClientServer0/dw_cnt",'a') as dw_cnt:
+                dw_cnt.write("{}\n".format(normal_dw_count))
             seg_dw_object = download_segment(segment_url, file_identifier)
             segment_size=seg_dw_object.segment_size #lock this as this is given to emperical_dash.py
             ''' lock apped into segment_w_chunks'''
