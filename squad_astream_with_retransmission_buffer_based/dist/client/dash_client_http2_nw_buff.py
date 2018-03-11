@@ -50,7 +50,7 @@ BUFFER_THRESHOLD_LOWER = 0.4
 RETRANS_THRESHOLD_UPPER = 0.6
 RETRANS_THRESHOLD_LOWER = 0.4
 
-normal_dw_count = 0
+#normal_dw_count = 0
 
 # Globals for arg parser with the default values
 # Not sure if this is the correct way ....
@@ -438,6 +438,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     dl_rate_history = [] 
     # Delay in terms of the number of segments
     delay = 0
+    normal_dw_count=0
     segment_duration = 0
     segment_size = segment_download_time = None
     # Netflix Variables
@@ -834,6 +835,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             seg_dw_object = SegmentDownloadStats()
             ''' TODO: thread join for normal segment (Optional: then join retx thread)'''
             #segment_size, segment_filename
+            
             normal_dw_count+=1
             with open("/mnt/QUIClientServer0/dw_cnt",'a') as dw_cnt:
                 dw_cnt.write("{}\n".format(normal_dw_count))
