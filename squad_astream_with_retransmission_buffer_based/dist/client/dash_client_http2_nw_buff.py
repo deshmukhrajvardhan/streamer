@@ -801,12 +801,14 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         retx_pending_q.put([retx_segment_url, file_identifier])
                         thread_retx=threading.Thread(target=retx_download_segment,args=(retx_pending_q.get()))
                         thread_retx.start()
+                        retx_flag=False
                   else:
                         retx_pending_q.put([retx_segment_url, file_identifier])
         #retx_seg_dw_object = retx_download_segment(retx_segment_url, file_identifier)
                 except NameError:
                         thread_retx=threading.Thread(target=retx_download_segment,args=(retx_segment_url, file_identifier,))
                         thread_retx.start()
+                        retx_flag=False
                 if retx_seg_dw_object.segment_size>0:
                         config_dash.LOG.info("{}: Downloaded Retxsegment {}".format(playback_type.upper(), retx_segment_url))
                         #retx_segment_download_time = timeit.default_timer() - retx_start_time #lock this as this is given to emperical_dash.py
