@@ -453,6 +453,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     RETRANSMISSION_SWITCH = False
     #retransmission_delay = 0 ''' not sure why its created, Unused'''
     retx_flag = False
+    retx_thread=False
     # Start playback of all the segments
     #for segment_number, segment in enumerate(dp_list, dp_object.video[current_bitrate].start):
     #for segment_number in dp_list:s
@@ -699,7 +700,15 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 RETRANS_OFFSET = False
                 #original_segment_number = segment_number
                 ''' TODO: check if retx is ongoing before entering this case'''
-                if segment_number > 10 and retrans:
+                try:
+                    if thread_retx.isAlive():
+				retx_thread=True
+                    else:
+                                retx_thread=False
+                except NameError:
+                    pass
+                if segment_number > 10 and retrans and retx_thread==False:
+                    
                     print ('++++++++++++++++++++++++++')
                     print (dash_player.buffer.__len__())
                     print (RETRANS_THRESHOLD_UPPER * config_dash.NETFLIX_BUFFER_SIZE)
@@ -799,16 +808,16 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         else:
                                 retx_seg_dw_object=None
                         retx_pending_q.put([retx_segment_url, file_identifier])
+                        retx_flag=False
                         thread_retx=threading.Thread(target=retx_download_segment,args=(retx_pending_q.get()))
                         thread_retx.start()
-                        retx_flag=False
                   else:
                         retx_pending_q.put([retx_segment_url, file_identifier])
         #retx_seg_dw_object = retx_download_segment(retx_segment_url, file_identifier)
                 except NameError:
+                        retx_flag=False
                         thread_retx=threading.Thread(target=retx_download_segment,args=(retx_segment_url, file_identifier,))
                         thread_retx.start()
-                        retx_flag=False
                 if retx_seg_dw_object.segment_size>0:
                         config_dash.LOG.info("{}: Downloaded Retxsegment {}".format(playback_type.upper(), retx_segment_url))
                         #retx_segment_download_time = timeit.default_timer() - retx_start_time #lock this as this is given to emperical_dash.py
@@ -898,7 +907,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         ''' retx_seg_dw seperate and global (as one retx at a time) NO join?'''
         #segment_download_time = timeit.default_timer() - start_time #lock this as this is given to emperical_dash.py
         ''' Create global and update in dw_seg()    (as one retx at a time)'''
-        if seg_dw_object is not None:
+        if seg_dw_object.segment_size>0:
         	segment_download_rate = seg_dw_object.segment_size / segment_download_time
         #with open('/mnt//hyper_http2_read_mod_chunk_seg_time_rate.txt', 'a') as rate_f:
         #    rate_f.write(str(segment_size)+'\t'+str(segment_download_time)+'\t'+str(segment_download_rate*8)+'\n')
