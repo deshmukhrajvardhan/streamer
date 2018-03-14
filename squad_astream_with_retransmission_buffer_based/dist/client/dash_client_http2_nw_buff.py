@@ -96,8 +96,8 @@ def get_mpd(url):
     global connection
     try:
         ssl_context = hyper.tls.init_context()
-        ssl_context.load_cert_chain(certfile='/mnt//cert.crt', keyfile='/mnt//cert.key')
-        ssl_context.load_verify_locations(cafile='/mnt//cert.pem')
+        ssl_context.load_cert_chain(certfile='/mnt/QUIClientServer0/cert.crt', keyfile='/mnt/QUIClientServer0/cert.key')
+        ssl_context.load_verify_locations(cafile='/mnt/QUIClientServer0/cert.pem')
         parse_url = urllib.parse.urlparse(url)
         connection = hyper.HTTP20Connection(parse_url.netloc, ssl_context=ssl_context,force_proto='h2', secure=True,port=443)
         connection.network_buffer_size= int(DOWNLOAD_CHUNK)
@@ -221,7 +221,7 @@ def download_segment(segment_url, dash_folder):
         with open(seg_dw_object.segment_filename,'wb') as segment_file_handle:
             segment_data = seg_conn.read(DOWNLOAD_CHUNK)
             while segment_data:
-#                    with open('/mnt//data_read_mod_chunk_hyper_HTTP2','ab') as movie:
+#                    with open('/mnt/QUIClientServer0/data_read_mod_chunk_hyper_HTTP2','ab') as movie:
 #                        movie.write(segment_data)
 
                     segment_file_handle.write(segment_data)
@@ -233,19 +233,19 @@ def download_segment(segment_url, dash_folder):
                     total_data_dl_time += chunk_dl_time
                     current_chunk_dl_rate = seg_dw_object.segment_size * 8 / total_data_dl_time
                     seg_dw_object.segment_chunk_rates.append(current_chunk_dl_rate)
-             #       with open('/mnt//hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
+             #       with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
              #           rate_f.write(str(segment_size)+'\t'+str(total_data_dl_time)+'\t'+str(current_chunk_dl_rate)+'\n')
                     #print (len(segment_w_chunks))
                     #print ("##################")
                     if (len(segment_data) < DOWNLOAD_CHUNK):
-                        with open('/mnt//chunk_rate_read_mod_chunk_squad_HTTP2.txt','a') as chk:
+                        with open('/mnt/QUIClientServer0/chunk_rate_read_mod_chunk_squad_HTTP2.txt','a') as chk:
                             chk.write("%s" %segment_url)
                             for item in seg_dw_object.segment_chunk_rates:
                                 chk.write(",%s" %item)
                             chk.write("\n")
                         
                         #seg_dw_object.segment_chunk_rates.append(chunk_dl_rates)
-              #          with open('/mnt//hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
+              #          with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
               #              rate_f.write("\n End of segment:{}\n".format(segment_url))
                         break
 
@@ -270,7 +270,7 @@ def retx_download_segment(retx_segment_url, dash_folder):
     #parse_url = urlparse.urlparse(segment_url)
     #connection = HTTPConnectionPool(parse_url.netloc)
     #chunk_dl_rates = []
-    #with open("/mnt//retx_API_in_proof.txt",'a') as rtx_api_proof:
+    #with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
     #    rtx_api_proof.write("IN RETX_dw_seg,{},{}\n".format(retx_segment_url, dash_folder))
     parsed_uri = urllib.parse.urlparse(retx_segment_url)
     segment_path = '{uri.path}'.format(uri=parsed_uri)
@@ -286,7 +286,7 @@ def retx_download_segment(retx_segment_url, dash_folder):
         #print segment_url
         total_data_dl_time = 0
         
-        #with open("/mnt//retx_API_in_proof.txt",'a') as rtx_api_proof:
+        #with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
             #rtx_api_proof.write("IN RETX_dw_seg_conn_time,{}\n".format(retx_seg_dw_object.segment_filename))
         
         seg_resp_conn = connection.request('GET',parsed_uri.path)
@@ -300,10 +300,10 @@ def retx_download_segment(retx_segment_url, dash_folder):
         with open(retx_seg_dw_object.segment_filename,'wb') as segment_file_handle:
             segment_data = seg_conn.read(DOWNLOAD_CHUNK)
             while segment_data:
-#                    with open('/mnt//data_read_mod_chunk_hyper_HTTP2','ab') as movie:
+#                    with open('/mnt/QUIClientServer0/data_read_mod_chunk_hyper_HTTP2','ab') as movie:
 #                        movie.write(segment_data)
                     
-                    #with open("/mnt//retx_API_in_proof.txt",'a') as rtx_api_proof:
+                    #with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
                         #rtx_api_proof.write("IN RETX_dw_seg 1st chunk\n")
                     segment_file_handle.write(segment_data)
                     retx_seg_dw_object.segment_size += len(segment_data)
@@ -314,19 +314,19 @@ def retx_download_segment(retx_segment_url, dash_folder):
                     total_data_dl_time += chunk_dl_time
                     current_chunk_dl_rate = retx_seg_dw_object.segment_size * 8 / total_data_dl_time
                     retx_seg_dw_object.segment_chunk_rates.append(current_chunk_dl_rate)
-             #       with open('/mnt//hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
+             #       with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
              #           rate_f.write(str(segment_size)+'\t'+str(total_data_dl_time)+'\t'+str(current_chunk_dl_rate)+'\n')
                     #print (len(segment_w_chunks))
                     #print ("##################")
                     if (len(segment_data) < DOWNLOAD_CHUNK):
-                        with open('/mnt//retx_chunk_rate_read_mod_chunk_squad_HTTP2.txt','a') as chk:
+                        with open('/mnt/QUIClientServer0/retx_chunk_rate_read_mod_chunk_squad_HTTP2.txt','a') as chk:
                             chk.write("%s" %retx_segment_url)
                             for item in retx_seg_dw_object.segment_chunk_rates:
                                 chk.write(",%s" %item)
                             chk.write("\n")
                         
                         #retx_seg_dw_object.segment_chunk_rates.append(chunk_dl_rates)
-              #          with open('/mnt//hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
+              #          with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
               #              rate_f.write("\n End of segment:{}\n".format(segment_url))
                         break
 
@@ -343,7 +343,7 @@ def retx_download_segment(retx_segment_url, dash_folder):
     #seg_conn.release_conn()
     seg_conn.close()
     segment_file_handle.close()
-    #with open('/mnt//retx_chunk_rate_read_mod_chunk_squad_HTTP2.txt','a') as retx_done:
+    #with open('/mnt/QUIClientServer0/retx_chunk_rate_read_mod_chunk_squad_HTTP2.txt','a') as retx_done:
      #                       retx_done.write("%s" %retx_segment_url)
     ''' Use Queue to get the retx_seg_dw_object'''
     retx_done_q.put(retx_seg_dw_object)
@@ -453,7 +453,8 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     RETRANSMISSION_SWITCH = False
     #retransmission_delay = 0 ''' not sure why its created, Unused'''
     retx_flag = False
-    retx_thread=False
+    retx_thread = False
+    cmdline_retrans = retrans
     # Start playback of all the segments
     #for segment_number, segment in enumerate(dp_list, dp_object.video[current_bitrate].start):
     #for segment_number in dp_list:s
@@ -624,7 +625,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 emp_func_time=timeit.default_timer()
                 current_bitrate = empirical_dash.empirical_dash(average_segment_sizes, segment_number, bitrates, segment_download_time, current_bitrate, dash_player.buffer.__len__(), segment_size, get_segment_sizes(dp_object,segment_number-2), video_segment_duration, dl_rate_history, bitrate_history, segment_w_chunks, DOWNLOAD_CHUNK) #MZ
 
-                with open("/mnt//http2_seg_time",'a') as seg_time:
+                with open("/mnt/QUIClientServer0/http2_seg_time",'a') as seg_time:
                     seg_time.write("{},{}\n".format(segment_number,timeit.default_timer()-emp_func_time))
 
                 
@@ -693,15 +694,19 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 # if dash_player.buffer.qsize() >= (config_dash.NETFLIX_BUFFER_SIZE):
                 if segment_size and segment_download_time:
                     segment_download_rate = segment_size / segment_download_time
-                    #with open('/mnt//http2_read_modif_seg_size_rate.txt', 'a') as rate_f:
+                    #with open('/mnt/QUIClientServer0/http2_read_modif_seg_size_rate.txt', 'a') as rate_f:
                         #rate_f.write(str(segment_size)+'\t'+str(segment_download_rate)+'\n')
                 else:
                     segment_download_rate = 0
                 RETRANS_OFFSET = False
+                
                 #original_segment_number = segment_number
                 ''' TODO: check if retx is ongoing before entering this case'''
-                if segment_number > 10 and retrans and retx_thread==False:
-                    retx_thread=True                   
+                with open("/mnt/QUIClientServer0/retx_decision",'a') as rtx_decision:
+                     rtx_decision.write("seg#: {}, retx cmdline: {}, retx_thread:{}, retx_flag:{}\n".format(segment_number,cmdline_retrans,retx_thread, retx_flag))
+                
+                if segment_number > 10 and cmdline_retrans and retx_thread == False:
+                    
                     print ('++++++++++++++++++++++++++')
                     print (dash_player.buffer.__len__())
                     print (RETRANS_THRESHOLD_UPPER * config_dash.NETFLIX_BUFFER_SIZE)
@@ -725,6 +730,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         #dl_rate based retransmission:
                         #if segment_number != original_segment_number and (curr_rate - current_bitrate >= original_current_bitrate):
                         if retx_flag:#segment_number != original_segment_number:
+                            retx_thread = True                   
                             #retransmission_delay_switch = True
                             #seg_num_offset = - (original_segment_number - segment_number + 1)
                             seg_num_offset = - (segment_number - retx_segment_number + 1)
@@ -780,10 +786,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         ''' We want both if retx'''
         ''' DOUBT(solved): Don't check for delay (buff full?) as we replace'''
         ''' DOUBT(solved): should we wait (thread join) for retx_seg to download (have to check b4 retx.py called)?'''
-
-        ''' DOUBT: list entry corrosponding url as per LOGS'''
-        retx_segment_path = dp_list[retx_segment_number+1][retx_current_bitrate] # due to implementation
-        retx_segment_url = urllib.parse.urljoin(domain, retx_segment_path)
+        if retx_flag:
+            retx_segment_path = dp_list[retx_segment_number+1][retx_current_bitrate] # due to implementation
+            retx_segment_url = urllib.parse.urljoin(domain, retx_segment_path)
 
         
         if retx_flag and (retx_segment_url is not segment_url): 
@@ -840,13 +845,13 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
 
                         segment_duration = retx_segment_info['playback_length']
 
-                        with open("/mnt//retx_API_proof.txt",'a') as rtx_api_proof:
+                        with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
                                 rtx_api_proof.write("retx_seg_info: {}\n".format(retx_segment_info))
                         segment_size = retx_seg_dw_object.segment_size #lock this as this is given to emperical_dash.py
                         '''TODO: Write json to buffer'''
                         dash_player.write(retx_segment_info)
                         retx_thread=False
-                        with open("/mnt//retx_API_proof.txt",'a') as rtx_api_proof:
+                        with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
                         	rtx_api_proof.write("{},{},{},{},{}\n".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
                 #only need to lock call to: dash_player.write(retx_segment_info)
         if playback_type.upper() == "SMART" and weighted_mean_object:
@@ -869,7 +874,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             #segment_size, segment_filename
             
             normal_dw_count+=1
-            with open("/mnt//dw_cnt",'a') as dw_cnt:
+            with open("/mnt/QUIClientServer0/dw_cnt",'a') as dw_cnt:
                 dw_cnt.write("{}\n".format(normal_dw_count))
             try:
               if (not thread_seg.isAlive()):
@@ -903,7 +908,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         ''' Create global and update in dw_seg()    (as one retx at a time)'''
         if seg_dw_object.segment_size>0:
         	segment_download_rate = seg_dw_object.segment_size / segment_download_time
-        #with open('/mnt//hyper_http2_read_mod_chunk_seg_time_rate.txt', 'a') as rate_f:
+        #with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_seg_time_rate.txt', 'a') as rate_f:
         #    rate_f.write(str(segment_size)+'\t'+str(segment_download_time)+'\t'+str(segment_download_rate*8)+'\n')
         	previous_segment_times.append(segment_download_time) 
         	'''not used for Emperical (SQUAD Case) '''
