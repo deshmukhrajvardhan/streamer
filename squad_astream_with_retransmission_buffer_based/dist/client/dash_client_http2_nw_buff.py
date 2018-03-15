@@ -803,6 +803,12 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
 # get the data from retx_segment_download()-> retx_seg_dw_object
 # might consider doing retx_seg_dw_object = SegmentDownloadStats() earlier
         try:
+            if (not thread_retx.isAlive()):
+                        if retx_done_q.qsize()>0:
+                                lock.acquire()
+                                retx_seg_dw_object=retx_done_q.get()
+                                retx_segment_download_time = timeit.default_timer() - retx_start_time
+                                lock.release()
             with open("/mnt/QUIClientServer0/retx_thread_decision",'a') as retx_state:
                 retx_state.write("retx_flag: {}, retx_seg_size: {},normal_url: {}\n".format(retx_flag, retx_seg_dw_object.segment_size, segment_url))
             if retx_seg_dw_object.segment_size > 0:
@@ -856,7 +862,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 retx_start_time = timeit.default_timer()
                 try:
                   if (not thread_retx.isAlive()):
-                        if retx_queue.qsize()>0:
+                        if retx_done_q.qsize()>0:
                                 lock.acquire()
                                 retx_seg_dw_object=retx_done_q.get()
                                 retx_segment_download_time = timeit.default_timer() - retx_start_time
