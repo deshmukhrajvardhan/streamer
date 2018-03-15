@@ -802,17 +802,21 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
 # trying to solve "Same thread can't enter" problem 
 # get the data from retx_segment_download()-> retx_seg_dw_object
 # might consider doing retx_seg_dw_object = SegmentDownloadStats() earlier
+
         try:
             if (not thread_retx.isAlive()):
-                        if retx_done_q.qsize()>0:
-                                lock.acquire()
-                                retx_seg_dw_object=retx_done_q.get()
-                                retx_segment_download_time = timeit.default_timer() - retx_start_time
-                                lock.release()
-            with open("/mnt/QUIClientServer0/retx_thread_decision",'a') as retx_state:
-                retx_state.write("retx_flag: {}, retx_seg_size: {},normal_url: {}\n".format(retx_flag, retx_seg_dw_object.segment_size, segment_url))
-            if retx_seg_dw_object.segment_size > 0:
-                        config_dash.LOG.info("{}: Downloaded Retxsegment {}".format(playback_type.upper(), retx_segment_url))
+                if retx_done_q.qsize()>0:
+                    lock.acquire()
+                    retx_seg_dw_object=retx_done_q.get()
+                    retx_segment_download_time = timeit.default_timer() - retx_start_time
+                    lock.release()
+                    with open("/mnt/QUIClientServer0/retx_thread_decision",'a') as retx_state:
+                            retx_state.write("retx_flag: {}, retx_seg_size: {},normal_url: {}\n".format(retx_flag, retx_seg_dw_object.segment_size, segment_url))
+
+
+                    if retx_seg_dw_object.segment_size > 0:
+                        
+                        config_dash.LOG.info("{}: Downloaded debug Retxsegment {}".format(playback_type.upper(), retx_segment_url))
                         #retx_segment_download_time = timeit.default_timer() - retx_start_time #lock this as this is given to emperical_dash.py
                         retx_segment_download_rate = retx_seg_dw_object.segment_size / retx_segment_download_time
                         segment_w_chunks.append(retx_seg_dw_object.segment_chunk_rates)
@@ -845,6 +849,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         segment_size = retx_seg_dw_object.segment_size #lock this as this is given to emperical_dash.py
                         '''TODO: Write json to buffer'''
                         dash_player.write(retx_segment_info)
+                        #del retx_seg_dw_object
                         retx_thread=False
                         with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
                         	rtx_api_proof.write("{},{},{},{},{}\n".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
@@ -866,17 +871,26 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                                 lock.acquire()
                                 retx_seg_dw_object=retx_done_q.get()
                                 retx_segment_download_time = timeit.default_timer() - retx_start_time
+                                config_dash.LOG.info("{}: Never in here retx_segment {}".format(playback_type.upper(), retx_seg_dw_object))
                                 lock.release()
-                        else:
-                                retx_seg_dw_object=None
-                        retx_pending_q.put([retx_segment_url, file_identifier])
+#                        else:
+#                                retx_seg_dw_object=None
+                                config_dash.LOG.info("{}: Started 2nd downloading retx_segment {}".format(playback_type.upper(), retx_seg_dw_object))
+                        
+#                        retx_pending_q.put([retx_segment_url, file_identifier])
+#                        retx_flag=False
+                        config_dash.LOG.info("{}: 2nd downloading territory retx_segment {}".format(playback_type.upper(), retx_seg_dw_object))
                         retx_flag=False
-                        thread_retx=threading.Thread(target=retx_download_segment,args=(retx_pending_q.get()))
+                        thread_retx=threading.Thread(target=retx_download_segment,args=(retx_segment_url, file_identifier,))
                         thread_retx.start()
+
+#                        thread_retx=threading.Thread(target=retx_download_segment,args=(retx_pending_q.get()))
+#                        thread_retx.start()
                   else:
                         retx_pending_q.put([retx_segment_url, file_identifier])
         #retx_seg_dw_object = retx_download_segment(retx_segment_url, file_identifier)
                 except NameError:
+                        config_dash.LOG.info("{}: Started downloading 1st retx_segment {}".format(playback_type.upper(), retx_segment_url))
                         retx_flag=False
                         thread_retx=threading.Thread(target=retx_download_segment,args=(retx_segment_url, file_identifier,))
                         thread_retx.start()
