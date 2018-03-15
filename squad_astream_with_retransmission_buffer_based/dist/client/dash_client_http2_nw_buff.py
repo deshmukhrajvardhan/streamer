@@ -789,8 +789,66 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         if retx_flag:
             retx_segment_path = dp_list[retx_segment_number+1][retx_current_bitrate] # due to implementation
             retx_segment_url = urllib.parse.urljoin(domain, retx_segment_path)
-
         
+        try:
+            with open("/mnt/QUIClientServer0/retx_decision",'a') as retx_state:
+                retx_state.write("retx_flag: {}, retx_url :{}\n".format(retx_flag, retx_segment_url))
+        except:
+            with open("/mnt/QUIClientServer0/retx_decision",'a') as retx_state:
+                retx_state.write("retx_flag: {}, normal_url: {}\n".format(retx_flag, segment_url))
+        
+# debugging retx_flag start
+#----------------#
+# trying to solve "Same thread can't enter" problem 
+# get the data from retx_segment_download()-> retx_seg_dw_object
+# might consider doing retx_seg_dw_object = SegmentDownloadStats() earlier
+        try:
+            with open("/mnt/QUIClientServer0/retx_thread_decision",'a') as retx_state:
+                retx_state.write("retx_flag: {}, retx_seg_size: {},normal_url: {}\n".format(retx_flag, retx_seg_dw_object.segment_size, segment_url))
+            if retx_seg_dw_object.segment_size > 0:
+                        config_dash.LOG.info("{}: Downloaded Retxsegment {}".format(playback_type.upper(), retx_segment_url))
+                        #retx_segment_download_time = timeit.default_timer() - retx_start_time #lock this as this is given to emperical_dash.py
+                        retx_segment_download_rate = retx_seg_dw_object.segment_size / retx_segment_download_time
+                        segment_w_chunks.append(retx_seg_dw_object.segment_chunk_rates)
+                        '''TODO: Create json'''
+            # Updating the JSON information
+                        retx_segment_name = os.path.split(retx_segment_url)[1]
+                        if "segment_info" not in config_dash.JSON_HANDLE:
+                        	config_dash.JSON_HANDLE["segment_info"] = list()
+                
+                        config_dash.JSON_HANDLE["segment_info"].append((retx_segment_name, retx_current_bitrate, retx_seg_dw_object.segment_size,retx_segment_download_time))
+                
+                        total_downloaded += retx_seg_dw_object.segment_size
+                        config_dash.LOG.info("{} : The total downloaded = {}, segment_size = {}, segment_number = {}".format(playback_type.upper(),total_downloaded, retx_seg_dw_object.segment_size, retx_segment_number))
+
+                        with open(download_log_file,'a') as rtx_api_proof:
+                        	rtx_api_proof.write("{},{},{},{},{}\n".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
+
+                        retx_segment_info = {'playback_length': video_segment_duration,
+                                'size': retx_seg_dw_object.segment_size,
+                                'bitrate': retx_current_bitrate,
+                                'data': retx_seg_dw_object.segment_filename,
+                                'URI': retx_segment_url,
+                                'segment_number': retx_segment_number,
+                                'segment_layer': bitrates.index(retx_current_bitrate)}
+
+                        segment_duration = retx_segment_info['playback_length']
+
+                        with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
+                                rtx_api_proof.write("retx_seg_info: {}\n".format(retx_segment_info))
+                        segment_size = retx_seg_dw_object.segment_size #lock this as this is given to emperical_dash.py
+                        '''TODO: Write json to buffer'''
+                        dash_player.write(retx_segment_info)
+                        retx_thread=False
+                        with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
+                        	rtx_api_proof.write("{},{},{},{},{}\n".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
+
+        except:
+            print("")
+# debugging retx_thread end
+#--------------------------------------------------------#
+#--------------------------------------------------------#
+
         if retx_flag and (retx_segment_url is not segment_url): 
                 '''TODO: call retx_dw_seg retx thread'''
                 retx_seg_dw_object = SegmentDownloadStats()
