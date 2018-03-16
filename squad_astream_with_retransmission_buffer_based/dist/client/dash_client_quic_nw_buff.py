@@ -36,7 +36,7 @@ import dash_buffer
 import requests
 from configure_log_file import configure_log_file, write_json
 import time
-
+import sysv_ipc
 try:
     WindowsError
 except NameError:
@@ -81,79 +81,50 @@ def write_msg(list_cmd,mq):
 
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
-    global connection
+    parse_url = urllib.parse.urlparse(url)
+    keyr = 262144
+    keyw = 262145
+    keyw1=362146
+    keyw2=462146
+    keyr1=562146
+    keyr2=662146
     try:
-        ssl_context = hyper.tls.init_context()
-        ssl_context.load_cert_chain(certfile='/mnt/QUIClientServer0/cert.crt', keyfile='/mnt/QUIClientServer0/cert.key')
-        ssl_context.load_verify_locations(cafile='/mnt/QUIClientServer0/cert.pem')
-        parse_url = urllib.parse.urlparse(url)
-        connection = hyper.HTTP20Connection(parse_url.netloc, ssl_context=ssl_context,force_proto='h2', secure=True,port=443)
-        connection.network_buffer_size= int(DOWNLOAD_CHUNK)
-        #parse_url = urlparse.urlparse(url)
-        '''
-        combine_url = str.join((parse_url.scheme, "://",parse_url.netloc))
-        config_dash.LOG.info("DASH URL %s" %combine_url)
-        connection = urllib3.connection_from_url(combine_url)
-        conn_mpd = connection.request('GET', combine_url)
-        config_dash.LOG.info("MPD URL %s" %parse_url.path)
-        '''
-        #connection = HTTPConnectionPool(parse_url.netloc)
-
-        http2_conn = connection.request('GET',parse_url.path)
-        mpd_conn=connection.get_response(http2_conn)
-    except hyper.http20.exceptions.HTTP20Error as error:
-        config_dash.LOG.error("Unable to download MPD file HTTP2 Error: %s" % error.code)
-        return None
-    except hyper.http20.exceptions.ConnectionError:
-        error_message = "URLError. Unable to reach Server.Check if Server active"
-        config_dash.LOG.error(error_message)
-        print (error_message)
-        return None
-    except (IOError,httplib.HTTPException) as e1:
-        message = "Unable to , file_identifierdownload MPD file HTTP Error."
-        config_dash.LOG.error(message)
-        return None 
-    #mpd_data = mpd_conn.read()
-    
-    #connection.close()
+    		mqr=sysv_ipc.MessageQueue(keyr, sysv_ipc.IPC_CREAT, max_message_size = 15000)
+    except:
+    		print "ERROR: Queue not created"
+    try:
+                mqw=sysv_ipc.MessageQueue(keyw, sysv_ipc.IPC_CREAT, max_message_size = 15000)
+    except:
+                print "ERROR: Queue not created"
+    cmd=["CREATE_CONN","10.10.2.2","443",url]
+    cmd_cpp=""
+    thread1=threading.Thread(target=write_msg,args=(pathw1,pathr,False, cmd,mqw))
+    thread1.start()
+    thread1.join()
+    os.system("./out/Test/quic_persistent_client --disable-certificate-verification 2>&1 > quic_out.txt &")
+    message=mqr.receive()
     mpd_file = url.split('/')[-1]
-    t=[]
-    i=0
-    chunk_dl_rates=[]
-    mpd_file_handle = open(mpd_file, 'wb')
-    chunk_start_time = timeit.default_timer()
-    segment_size=0
-    chunk_number=0
-    total_data_dl_time=0
-#    for mpd_data in mpd_conn.read_proper_chunks(int(DOWNLOAD_CHUNK)):
-    mpd_data = mpd_conn.read(int(DOWNLOAD_CHUNK))
-    while mpd_data:
-#        segment_size += len(mpd_data)
-#        timenow = timeit.default_timer()
-#        chunk_dl_time = timenow - chunk_start_time
-#        chunk_start_time=timenow
-#        chunk_number += 1
-#        total_data_dl_time += chunk_dl_time
-#        current_chunk_dl_rate = segment_size * 8 / total_data_dl_time
-        
-#        chunk_dl_rates.append(current_chunk_dl_rate)
-
-#        t.append(i)"""
-        mpd_file_handle.write(mpd_data)
-        if (len(mpd_data) < DOWNLOAD_CHUNK):
-#            print("saw b:{},chunks:{}".format(len(t),chunk_dl_rates))
-#            exit()
-            break
-        
-        mpd_data = mpd_conn.read(int(DOWNLOAD_CHUNK))
-        #print("MPD seg:#",mpd_data)
-
-    mpd_file_handle.close()
-    mpd_conn.close()
-    #mpd_conn.release_conn()
-    #config_dash.LOG.info(mpd_conn.data)
-    config_dash.LOG.info("Downloaded the MPD file {}".format(mpd_file))
-    return mpd_file
+    try:
+            mqw1=sysv_ipc.MessageQueue(keyw1, sysv_ipc.IPC_CREAT, max_message_size = 15000)
+    except:
+           print "ERROR: Queue not created"
+    try:
+           mqr1=sysv_ipc.MessageQueue(keyr1, sysv_ipc.IPC_CREAT, max_message_size = 15000)
+    except:
+           print "ERROR: Queue not created"
+    cmd1=["CREATE_STREAM",parse_url.path,mpd_file]
+    if "CONN_CREATED" in message:
+    	while True:
+		message=mqr1.receive()
+		if "DONE" in str(message[0]):
+			break
+	try:
+              mqr1.remove()
+        except sysv_ipc.ExistentialError:
+              print "Existen.. error"
+	return mpd_file
+    else:
+	return "MPD error"
 
 
 def get_bandwidth(data, duration):
