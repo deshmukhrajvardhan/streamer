@@ -21,6 +21,7 @@ class DashPlayer:
         self.playback_start_time = None
         self.playback_duration = video_length
         self.segment_duration = segment_duration
+        self.current_play_segment = None
         # Timers to keep track of playback time and the actual time
         self.playback_timer = StopWatch()
         self.actual_start_time = None
@@ -156,6 +157,7 @@ class DashPlayer:
                     self.buffer_lock.acquire()
                     # play_segment = self.buffer.get()
                     play_segment = self.buffer.pop(0) #MZ
+                    self.current_play_segment = play_segment['segment_number'] # get the current play seg to determine abandonment
                     self.buffer_lock.release()
                     config_dash.LOG.info("Reading the segment number {} from the buffer at playtime {}".format(
                         play_segment['segment_number'], self.playback_timer.time()))

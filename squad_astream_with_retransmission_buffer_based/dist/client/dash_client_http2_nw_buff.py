@@ -191,6 +191,7 @@ def download_segment(segment_url, dash_folder):
     #parse_url = urlparse.urlparse(segment_url)
     #connection = HTTPConnectionPool(parse_url.netloc)
     #chunk_dl_rates = []
+    config_dash.LOG.info("in dw_seg {}".format(segment_url))
     parsed_uri = urllib.parse.urlparse(segment_url)
     segment_path = '{uri.path}'.format(uri=parsed_uri)
     while segment_path.startswith('/'):
@@ -261,7 +262,7 @@ def download_segment(segment_url, dash_folder):
     ''' Use Queue to get the seg_dw_object'''
     return seg_dw_object
 
-def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_size, video_segment_duration):
+def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_size, video_segment_duration, current_play_segment_number, current_retx_segment_number):
     #parse_url = urlparse.urlparse(segment_url)
     #connection = HTTPConnectionPool(parse_url.netloc)
     #chunk_dl_rates = []
@@ -309,7 +310,10 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
                     current_chunk_dl_rate = retx_seg_dw_object.segment_size * 8 / total_data_dl_time
 
                     if retrans_next_segment_size:
-                        if (((retrans_next_segment_size - retx_seg_dw_object.segment_size) / current_chunk_dl_rate) > (video_segment_duration - total_data_dl_time) * 1.5):
+                        if ((((retrans_next_segment_size - retx_seg_dw_object.segment_size) / current_chunk_dl_rate)* 1.5) > ((current_play_segment_number - current_retx_segment_number)*video_segment_duration)):
+                            with open("/mnt/QUIClientServer0/retx_abandonment",'a') as retx_abandon:
+                                retx_abandon.write("Abandoned Retx of seg {}, [({}-{})/{}]*1.5 > ({}-{})\n".format(retx_segment_url,retrans_next_segment_size,retx_seg_dw_object.segment_size,current_chunk_dl_rate,current_play_segment_number,current_retx_segment_number,video_segment_duration))
+
                             break
 
                     chunk_start_time=timenow
@@ -321,6 +325,11 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
                     #print (len(segment_w_chunks))
                     #print ("##################")
                     if (len(segment_data) < DOWNLOAD_CHUNK):
+
+                        with open("/mnt/QUIClientServer0/retx_not_abandoned",'a') as retx_not_abandon:
+                                retx_not_abandon.write("Not Abandoned Retx of seg {}, [({}-{})/{}] > ({}-{})*1.5\n".format(retx_segment_url,retrans_next_segment_size,retx_seg_dw_object.segment_size,current_chunk_dl_rate,current_play_segment_number,current_retx_segment_number,video_segment_duration))
+
+                        
                         with open('/mnt/QUIClientServer0/retx_chunk_rate_read_mod_chunk_squad_HTTP2.txt','a') as chk:
                             chk.write("%s" %retx_segment_url)
                             for item in retx_seg_dw_object.segment_chunk_rates:
@@ -345,6 +354,7 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
     #seg_conn.release_conn()
     seg_conn.close()
     segment_file_handle.close()
+    config_dash.LOG.info("retx_seg close{}".format(retx_segment_url))
     #with open('/mnt/QUIClientServer0/retx_chunk_rate_read_mod_chunk_squad_HTTP2.txt','a') as retx_done:
      #                       retx_done.write("%s" %retx_segment_url)
     ''' Use Queue to get the retx_seg_dw_object'''
@@ -717,9 +727,14 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                             RETRANSMISSION_SWITCH = False
                             '''DOUBT: does this the buffer size check change decision about retx'''
                             retx_flag = False
+
+                        with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
+                            rtx_api_proof.write("bufl:{},retx_qual:{},retx_num{},retx:flag{},\n".format(str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_number+1,retx_flag))
                         #dl_rate based retransmission:
                         #if segment_number != original_segment_number and (curr_rate - current_bitrate >= original_current_bitrate):
+
                         if retx_flag:#segment_number != original_segment_number:
+                            config_dash.LOG.info("{}: bitrate_history retx_flag segment {}".format(playback_type.upper(), retx_segment_number))
                             #retransmission_delay_switch = True
                             #seg_num_offset = - (original_segment_number - segment_number + 1)
                             seg_num_offset = - (segment_number - retx_segment_number + 1)
@@ -787,8 +802,8 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 retx_seg_dw_object = SegmentDownloadStats()
                 config_dash.LOG.info("{}: Started downloading retx_segment {}".format(playback_type.upper(), retx_segment_url))
                 retx_start_time = timeit.default_timer()
-                retx_seg_dw_object = retx_download_segment(retx_segment_url, file_identifier, retrans_next_segment_size, video_segment_duration)
-                if len(retx_seg_dw_object.segment_chunk_rates)>1:
+                retx_seg_dw_object = retx_download_segment(retx_segment_url, file_identifier, retrans_next_segment_size, video_segment_duration, dash_player.current_play_segment, retx_segment_number+1)
+                if len(retx_seg_dw_object.segment_chunk_rates):
                     config_dash.LOG.info("{}: Downloaded Retxsegment {}".format(playback_type.upper(), retx_segment_url))
                     retx_segment_download_time = timeit.default_timer() - retx_start_time #lock this as this is given to emperical_dash.py
                     retx_segment_download_rate = retx_seg_dw_object.segment_size / retx_segment_download_time
@@ -830,6 +845,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         rtx_api_proof.write("{},{},{},{},{}\n".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
                 #only need to lock call to: dash_player.write(retx_segment_info)
                 else:
+                    config_dash.LOG.info("{}: Abandoned Retx segment {}".format(playback_type.upper(), retx_segment_url))
                     with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as abandon_retx:
                         abandon_retx.write("Retx Abandoned\n")
                 
@@ -850,7 +866,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             
             normal_dw_count+=1
             with open("/mnt/QUIClientServer0/dw_cnt",'a') as dw_cnt:
-                dw_cnt.write("{}\n".format(normal_dw_count))
+                dw_cnt.write("{},{}\n".format(normal_dw_count,segment_url))
             seg_dw_object = download_segment(segment_url, file_identifier)
             segment_size=seg_dw_object.segment_size #lock this as this is given to emperical_dash.py
             ''' lock apped into segment_w_chunks'''
