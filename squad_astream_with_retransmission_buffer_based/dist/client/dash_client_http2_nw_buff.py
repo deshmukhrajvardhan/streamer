@@ -830,7 +830,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                     #if retx_seg_dw_object.segment_size > 0 :
                         
                     if len(retx_seg_dw_object.segment_chunk_rates): # retx_abandonment
-                            retx_thread = False # retx_thread free
+                            #retx_thread = False # retx_thread free
                             with open("/mnt/QUIClientServer0/retx_abandonment",'a') as retx_abandon:
                                 retx_abandon.write("Abandoned Retx of seg {}\n".format(retx_seg_dw_object.segment_filename))
                             config_dash.LOG.info("{}: Downloaded debug Retxsegment {}".format(playback_type.upper(), retx_segment_url))
@@ -867,13 +867,14 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                             '''TODO: Write json to buffer'''
                             dash_player.write(retx_segment_info)
                             #del retx_seg_dw_object
-                            retx_thread=False
+                            retx_thread=False #retx_thread free, set after retx_download/abandonment
                             with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
                                 rtx_api_proof.write("{},{},{},{},{}\n".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
 
                     else:
                             with open("/mnt/QUIClientServer0/retx_abandonment",'a') as retx_abandon:
                                 retx_abandon.write("Abandoned Retx, not writing in the buffer, retx_url:{}\n".format(thread_retx.isAlive(),retx_segment_url))
+                            retx_thread = False # retx_thread free
                             
 
         except:
@@ -902,7 +903,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
 #                        retx_pending_q.put([retx_segment_url, file_identifier])
 #                        retx_flag=False
                         config_dash.LOG.info("{}: 2nd downloading territory retx_segment {}".format(playback_type.upper(), retx_seg_dw_object))
-                        retx_flag=False
+                        retx_flag=False # set before starting retx
                         thread_retx=threading.Thread(target=retx_download_segment,args=(retx_segment_url, file_identifier,retrans_next_segment_size, video_segment_duration))
                         thread_retx.start()
 
@@ -921,7 +922,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
 
                 if len(retx_seg_dw_object.segment_chunk_rates): # retx_abandonment
                             config_dash.LOG.info("{}: Never Waste retx_segment {}".format(playback_type.upper(), retx_segment_url))
-                            retx_thread = False # retx_thread free
+                            #retx_thread = False # retx_thread free
                             with open("/mnt/QUIClientServer0/retx_abandonment",'a') as retx_abandon:
                                 retx_abandon.write("Abandoned Retx of seg {}".format(retx_seg_dw_object.segment_filename))
 
