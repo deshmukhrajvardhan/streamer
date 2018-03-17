@@ -209,8 +209,9 @@ def download_segment(segment_url, dash_folder):
         #print segment_url
         total_data_dl_time = 0
         
-        
+        #lock.acquire()
         seg_resp_conn = connection.request('GET',parsed_uri.path)
+        #lock.release()
         seg_conn = connection.get_response(seg_resp_conn)
 
 
@@ -266,7 +267,7 @@ def download_segment(segment_url, dash_folder):
     seg_done_q.put(seg_dw_object)
     return 
 
-def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_size, video_segment_duration):
+def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_size, video_segment_duration, current_play_segment_number, current_retx_segment_number):
     #parse_url = urlparse.urlparse(segment_url)
     #connection = HTTPConnectionPool(parse_url.netloc)
     #chunk_dl_rates = []
@@ -289,11 +290,14 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
         
         #with open("/mnt/QUIClientServer0/retx_API_in_proof.txt",'a') as rtx_api_proof:
             #rtx_api_proof.write("IN RETX_dw_seg_conn_time,{}\n".format(retx_seg_dw_object.segment_filename))
-        
+        #lock.acquire()
         seg_resp_conn = connection.request('GET',parsed_uri.path)
+        #lock.release()
         seg_conn = connection.get_response(seg_resp_conn)
 
 
+        seg_dw_remaining_time = 0
+        time_remaining_till_playback = 0
         chunk_number = 0
         chunk_start_time = timeit.default_timer()
         #seg_conn = connection.request('GET', segment_url) 
@@ -314,12 +318,13 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
                     current_chunk_dl_rate = retx_seg_dw_object.segment_size * 8 / total_data_dl_time
                     
                     if retrans_next_segment_size:
-                        if (((retrans_next_segment_size - retx_seg_dw_object.segment_size) / current_chunk_dl_rate) > (video_segment_duration - total_data_dl_time) * 1.5):
-                            with open("/mnt/QUIClientServer0/retx_abandonment",'a') as retx_abandon:
-                                retx_abandon.write("Abandoned Retx of seg {}, [({}-{})/{}] > ({}-{})*1.5\n".format(retx_seg_dw_object.segment_filename, retrans_next_segment_size, retx_seg_dw_object.segment_size, current_chunk_dl_rate, video_segment_duration, total_data_dl_time))
-            #                retx_done_q.put(retx_seg_dw_object)
+                        seg_dw_remaining_time = (1.5*(retrans_next_segment_size - retx_seg_dw_object.segment_size)/current_chunk_dl_rate) #> (current_play_segment_number - current_retx_segment_number)* video_segment_duration
+                        time_remaining_till_playback = (current_retx_segment_number - current_play_segment_number)* video_segment_duration
+                        if (seg_dw_remaining_time > time_remaining_till_playback):
+                            with open("/mnt/QUIClientServer0/in_retx_retx_abandonment",'a') as retx_abandon:
+                                retx_abandon.write("{} > {} Abandoned Retx of seg {}, [({}-{})/{}]*1.5 > ({}-{})*{}\n".format(seg_dw_remaining_time,time_remaining_till_playback,retx_segment_url,retrans_next_segment_size,retx_seg_dw_object.segment_size,current_chunk_dl_rate,current_play_segment_number,current_retx_segment_number,video_segment_duration))
                             break
-                   
+            
                     chunk_start_time=timenow
                     chunk_number += 1
                    
@@ -334,6 +339,10 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
                             chk.write("\n")
                             
                         retx_seg_dw_object.segment_chunk_rates.append(current_segment_chunk_rates)
+                        
+                        with open("/mnt/QUIClientServer0/retx_not_abandonment",'a') as retx_not_abandon:
+                                retx_not_abandon.write("Not Abandoned Retx of seg {}, [({}-{})/{}]*1.5 > ({}-{})\n".format(retx_segment_url,retrans_next_segment_size,retx_seg_dw_object.segment_size,current_chunk_dl_rate,current_play_segment_number,current_retx_segment_number,video_segment_duration))
+
                         
                         #retx_seg_dw_object.segment_chunk_rates.append(chunk_dl_rates)
               #          with open('/mnt/QUIClientServer0/hyper_http2_read_mod_chunk_time_rate.txt','a') as rate_f:
@@ -825,14 +834,11 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                     lock.release()
                     with open("/mnt/QUIClientServer0/retx_thread_decision",'a') as retx_state:
                             retx_state.write("retx_flag: {}, retx_seg_size: {},normal_url: {}\n".format(retx_flag, retx_seg_dw_object.segment_size, segment_url))
-
-
-                    #if retx_seg_dw_object.segment_size > 0 :
                         
                     if len(retx_seg_dw_object.segment_chunk_rates): # retx_abandonment
                             #retx_thread = False # retx_thread free
                             with open("/mnt/QUIClientServer0/retx_abandonment",'a') as retx_abandon:
-                                retx_abandon.write("Abandoned Retx of seg {}\n".format(retx_seg_dw_object.segment_filename))
+                                retx_abandon.write("Retx of seg {}\n".format(retx_seg_dw_object.segment_filename))
                             config_dash.LOG.info("{}: Downloaded debug Retxsegment {}".format(playback_type.upper(), retx_segment_url))
                             #retx_segment_download_time = timeit.default_timer() - retx_start_time #lock this as this is given to emperical_dash.py
                             retx_segment_download_rate = retx_seg_dw_object.segment_size / retx_segment_download_time
@@ -868,13 +874,16 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                             dash_player.write(retx_segment_info)
                             #del retx_seg_dw_object
                             retx_thread=False #retx_thread free, set after retx_download/abandonment
+                            retx_flag = False # not req
                             with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
                                 rtx_api_proof.write("{},{},{},{},{}\n".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
 
                     else:
+                            retx_thread = False # retx_thread free
+                            retx_flag= False # 
                             with open("/mnt/QUIClientServer0/retx_abandonment",'a') as retx_abandon:
                                 retx_abandon.write("Abandoned Retx, not writing in the buffer, retx_url:{}\n".format(thread_retx.isAlive(),retx_segment_url))
-                            retx_thread = False # retx_thread free
+
                             
 
         except:
@@ -904,7 +913,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
 #                        retx_flag=False
                         config_dash.LOG.info("{}: 2nd downloading territory retx_segment {}".format(playback_type.upper(), retx_seg_dw_object))
                         retx_flag=False # set before starting retx
-                        thread_retx=threading.Thread(target=retx_download_segment,args=(retx_segment_url, file_identifier,retrans_next_segment_size, video_segment_duration))
+                        thread_retx=threading.Thread(target=retx_download_segment,args=(retx_segment_url, file_identifier,retrans_next_segment_size, video_segment_duration, dash_player.current_play_segment, retx_segment_number))
                         thread_retx.start()
 
 #                        thread_retx=threading.Thread(target=retx_download_segment,args=(retx_pending_q.get()))
@@ -915,56 +924,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 except NameError:
                         config_dash.LOG.info("{}: Started downloading 1st retx_segment {}".format(playback_type.upper(), retx_segment_url))
                         retx_flag=False
-                        thread_retx=threading.Thread(target=retx_download_segment,args=(retx_segment_url, file_identifier, retrans_next_segment_size, video_segment_duration))
+                        thread_retx=threading.Thread(target=retx_download_segment,args=(retx_segment_url, file_identifier, retrans_next_segment_size, video_segment_duration, dash_player.current_play_segment, retx_segment_number))
                         thread_retx.start()
                 #if retx_seg_dw_object.segment_size > 0 :
-                
-
-                if len(retx_seg_dw_object.segment_chunk_rates): # retx_abandonment
-                            config_dash.LOG.info("{}: Never Waste retx_segment {}".format(playback_type.upper(), retx_segment_url))
-                            #retx_thread = False # retx_thread free
-                            with open("/mnt/QUIClientServer0/retx_abandonment",'a') as retx_abandon:
-                                retx_abandon.write("Abandoned Retx of seg {}".format(retx_seg_dw_object.segment_filename))
-
-                            config_dash.LOG.info("{}: Downloaded Retxsegment {}".format(playback_type.upper(), retx_segment_url))
-                            #retx_segment_download_time = timeit.default_timer() - retx_start_time #lock this as this is given to emperical_dash.py
-                            retx_segment_download_rate = retx_seg_dw_object.segment_size / retx_segment_download_time
-                            segment_w_chunks.append(retx_seg_dw_object.segment_chunk_rates)
-                            '''TODO: Create json'''
-                            # Updating the JSON information
-                            retx_segment_name = os.path.split(retx_segment_url)[1]
-                            if "segment_info" not in config_dash.JSON_HANDLE:
-                                config_dash.JSON_HANDLE["segment_info"] = list()
-                
-                            config_dash.JSON_HANDLE["segment_info"].append((retx_segment_name, retx_current_bitrate, retx_seg_dw_object.segment_size,retx_segment_download_time))
-                
-                            total_downloaded += retx_seg_dw_object.segment_size
-                            config_dash.LOG.info("{} : The total downloaded = {}, segment_size = {}, segment_number = {}".format(playback_type.upper(),total_downloaded, retx_seg_dw_object.segment_size, retx_segment_number))
-
-                            with open(download_log_file,'a') as rtx_api_proof:
-                                rtx_api_proof.write("{},{},{},{},{}\n".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
-
-                            retx_segment_info = {'playback_length': video_segment_duration,
-                                'size': retx_seg_dw_object.segment_size,
-                                'bitrate': retx_current_bitrate,
-                                'data': retx_seg_dw_object.segment_filename,
-                                'URI': retx_segment_url,
-                                'segment_number': retx_segment_number,
-                                'segment_layer': bitrates.index(retx_current_bitrate)}
-
-                            segment_duration = retx_segment_info['playback_length']
-
-                            with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
-                                rtx_api_proof.write("retx_seg_info: {}\n".format(retx_segment_info))
-                            segment_size = retx_seg_dw_object.segment_size #lock this as this is given to emperical_dash.py
-                            '''TODO: Write json to buffer'''
-                            dash_player.write(retx_segment_info)
-                            retx_thread=False
-                            with open("/mnt/QUIClientServer0/retx_API_proof.txt",'a') as rtx_api_proof:
-                                rtx_api_proof.write("{},{},{},{},{}\n".format(timeit.default_timer()-start_dload_time,str(dash_player.buffer.__len__()),retx_current_bitrate, retx_segment_download_rate, retx_segment_number))
-                            #only need to lock call to: dash_player.write(retx_segment_info)
-                            if playback_type.upper() == "SMART" and weighted_mean_object:
-                                weighted_mean_object.update_weighted_mean(segment_size, segment_download_time)
                 
                 
         ''' TODO: Check it for normal case (not retx case)'''        
