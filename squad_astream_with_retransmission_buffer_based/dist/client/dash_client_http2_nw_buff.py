@@ -317,13 +317,13 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
                     total_data_dl_time += chunk_dl_time
                     current_chunk_dl_rate = retx_seg_dw_object.segment_size * 8 / total_data_dl_time
                     
-                    if retrans_next_segment_size:
-                        seg_dw_remaining_time = (1.5*(retrans_next_segment_size - retx_seg_dw_object.segment_size)/current_chunk_dl_rate) #> (current_play_segment_number - current_retx_segment_number)* video_segment_duration
-                        time_remaining_till_playback = (current_retx_segment_number - current_play_segment_number)* video_segment_duration
-                        if (seg_dw_remaining_time > time_remaining_till_playback):
-                            with open("/mnt/QUIClientServer0/in_retx_retx_abandonment",'a') as retx_abandon:
-                                retx_abandon.write("{} > {} Abandoned Retx of seg {}, [({}-{})/{}]*1.5 > ({}-{})*{}\n".format(seg_dw_remaining_time,time_remaining_till_playback,retx_segment_url,retrans_next_segment_size,retx_seg_dw_object.segment_size,current_chunk_dl_rate,current_play_segment_number,current_retx_segment_number,video_segment_duration))
-                            break
+                    #if retrans_next_segment_size:
+                      #  seg_dw_remaining_time = (1.5*(retrans_next_segment_size - retx_seg_dw_object.segment_size)/current_chunk_dl_rate)
+                       # time_remaining_till_playback = (current_retx_segment_number - current_play_segment_number)* video_segment_duration
+                     #   if (seg_dw_remaining_time > time_remaining_till_playback):
+                        #    with open("/mnt/QUIClientServer0/in_retx_retx_abandonment",'a') as retx_abandon:
+                         #       retx_abandon.write("{} > {} Abandoned Retx of seg {}, [({}-{})/{}]*1.5 > ({}-{})*{}\n".format(seg_dw_remaining_time,time_remaining_till_playback,retx_segment_url,retrans_next_segment_size,retx_seg_dw_object.segment_size,current_chunk_dl_rate,current_play_segment_number,current_retx_segment_number,video_segment_duration))
+                          #  break
             
                     chunk_start_time=timenow
                     chunk_number += 1
@@ -334,14 +334,14 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
                     if (len(segment_data) < DOWNLOAD_CHUNK):
                         with open('/mnt/QUIClientServer0/retx_chunk_rate_read_mod_chunk_squad_HTTP2.txt','a') as chk:
                             chk.write("%s" %retx_segment_url)
-                            for item in retx_seg_dw_object.segment_chunk_rates:
+                            for item in current_segment_chunk_rates:
                                 chk.write(",%s" %item)
                             chk.write("\n")
                             
-                        retx_seg_dw_object.segment_chunk_rates.append(current_segment_chunk_rates)
+                        retx_seg_dw_object.segment_chunk_rates.extend(current_segment_chunk_rates)
                         
-                        with open("/mnt/QUIClientServer0/retx_not_abandonment",'a') as retx_not_abandon:
-                                retx_not_abandon.write("Not Abandoned Retx of seg {}, [({}-{})/{}]*1.5 > ({}-{})\n".format(retx_segment_url,retrans_next_segment_size,retx_seg_dw_object.segment_size,current_chunk_dl_rate,current_play_segment_number,current_retx_segment_number,video_segment_duration))
+                        #with open("/mnt/QUIClientServer0/retx_not_abandonment",'a') as retx_not_abandon:
+                         #       retx_not_abandon.write("Not Abandoned Retx of seg {}, [({}-{})/{}]*1.5 > ({}-{})\n".format(retx_segment_url,retrans_next_segment_size,retx_seg_dw_object.segment_size,current_chunk_dl_rate,current_play_segment_number,current_retx_segment_number,video_segment_duration))
 
                         
                         #retx_seg_dw_object.segment_chunk_rates.append(chunk_dl_rates)
