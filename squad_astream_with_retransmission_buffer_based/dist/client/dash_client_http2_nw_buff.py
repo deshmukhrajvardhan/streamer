@@ -33,7 +33,7 @@ from adaptation import basic_dash, basic_dash2, weighted_dash, netflix_dash, emp
 from adaptation.adaptation import WeightedMean
 import config_dash
 import dash_buffer
-import requests
+#import requests
 from configure_log_file import configure_log_file, write_json
 import time
 import threading
@@ -60,7 +60,7 @@ LIST = False
 PLAYBACK = DEFAULT_PLAYBACK
 DOWNLOAD = False
 SEGMENT_LIMIT = None
-connection = requests.Session()
+#connection = requests.Session()
 download_log_file = config_dash.DOWNLOAD_LOG_FILENAME
 lock=threading.Lock()
 retx_pending_q=Queue()
@@ -485,8 +485,15 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     original_segment_number = 1
     while segment_number < len(dp_list):
         try:
-                while thread_seg.isAlive() and thread_retx.isAlive():
+                while thread_seg.isAlive() :#and thread_retx.isAlive():
                    pass
+                
+                #if retx_thread==True:
+                #    while thread_seg.is_alive():
+                #        pass
+                #else:
+                #while thread_seg.is_alive() and retx_thread==True:
+                #    pass
         except NameError as e:
                    print ("Thread not Created")
 	#if retransmission_delay_switch == True:
@@ -812,12 +819,12 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             retx_segment_path = dp_list[retx_segment_number+1][retx_current_bitrate] # due to implementation
             retx_segment_url = urllib.parse.urljoin(domain, retx_segment_path)
         
-        try:
-            with open("/mnt/QUIClientServer0/retx_decision",'a') as retx_state:
-                retx_state.write("retx_flag: {}, retx_url :{}\n".format(retx_flag, retx_segment_url))
-        except:
-            with open("/mnt/QUIClientServer0/retx_decision",'a') as retx_state:
-                retx_state.write("retx_flag: {}, normal_url: {}\n".format(retx_flag, segment_url))
+#        try:
+#            with open("/mnt/QUIClientServer0/retx_decision",'a') as retx_state:
+#                retx_state.write("retx_flag: {}, retx_url :{}\n".format(retx_flag, retx_segment_url))
+#        except:
+#            with open("/mnt/QUIClientServer0/retx_decision",'a') as retx_state:
+#                retx_state.write("retx_flag: {}, normal_url: {}\n".format(retx_flag, segment_url))
         
 # debugging retx_flag start
 #----------------#
