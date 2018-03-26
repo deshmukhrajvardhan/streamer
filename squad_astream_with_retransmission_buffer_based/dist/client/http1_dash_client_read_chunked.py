@@ -187,10 +187,11 @@ def download_segment(segment_url, dash_folder):
         
         
         seg_resp_conn = connection.request('GET',parsed_uri.path)
+	chunk_number = 0
+        chunk_start_time = timeit.default_timer()
         seg_conn = connection.get_response()
 
-        chunk_number = 0
-        chunk_start_time = timeit.default_timer()
+
         with open(segment_filename,'wb') as segment_file_handle:
                 for segment_data in seg_conn.read_chunked_give_size(DOWNLOAD_CHUNK):
                     if segment_data is -1:
