@@ -212,12 +212,13 @@ def download_segment(segment_url, dash_folder):
         #lock.acquire()
         seg_resp_conn = connection.request('GET',parsed_uri.path)
         #lock.release()
+	chunk_number = 0
+        chunk_start_time = timeit.default_timer()
+
         seg_conn = connection.get_response(seg_resp_conn)
 
 
-        chunk_number = 0
-        chunk_start_time = timeit.default_timer()
-        #seg_conn = connection.request('GET', segment_url) 
+                #seg_conn = connection.request('GET', segment_url) 
         #with closing(connection.get(segment_url, stream=True)) as seg_conn:
         with open(seg_dw_object.segment_filename,'wb') as segment_file_handle:
             segment_data = seg_conn.read(DOWNLOAD_CHUNK)
@@ -293,13 +294,15 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
         #lock.acquire()
         seg_resp_conn = connection.request('GET',parsed_uri.path)
         #lock.release()
+	
+        chunk_number = 0
+        chunk_start_time = timeit.default_timer()
+	
         seg_conn = connection.get_response(seg_resp_conn)
 
 
         seg_dw_remaining_time = 0
         time_remaining_till_playback = 0
-        chunk_number = 0
-        chunk_start_time = timeit.default_timer()
         #seg_conn = connection.request('GET', segment_url) 
         #with closing(connection.get(segment_url, stream=True)) as seg_conn:
         with open(retx_seg_dw_object.segment_filename,'wb') as segment_file_handle:
