@@ -212,7 +212,7 @@ def download_segment(segment_url, dash_folder):
         #lock.acquire()
         seg_resp_conn = connection.request('GET',parsed_uri.path)
         #lock.release()
-	chunk_number = 0
+        chunk_number = 0
         chunk_start_time = timeit.default_timer()
 
         seg_conn = connection.get_response(seg_resp_conn)
@@ -293,8 +293,7 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
             #rtx_api_proof.write("IN RETX_dw_seg_conn_time,{}\n".format(retx_seg_dw_object.segment_filename))
         #lock.acquire()
         seg_resp_conn = connection.request('GET',parsed_uri.path)
-        #lock.release()
-	
+
         chunk_number = 0
         chunk_start_time = timeit.default_timer()
 	

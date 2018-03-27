@@ -57,7 +57,7 @@ LIST = False
 PLAYBACK = DEFAULT_PLAYBACK
 DOWNLOAD = False
 SEGMENT_LIMIT = None
-connection = requests.Session()
+#connection = requests.Session()
 download_log_file = config_dash.DOWNLOAD_LOG_FILENAME
 
 
@@ -187,7 +187,7 @@ def download_segment(segment_url, dash_folder):
         
         
         seg_resp_conn = connection.request('GET',parsed_uri.path)
-	chunk_number = 0
+        chunk_number = 0
         chunk_start_time = timeit.default_timer()
         seg_conn = connection.get_response()
 
@@ -202,6 +202,9 @@ def download_segment(segment_url, dash_folder):
                                 chk.write(",%s" %item)
                             chk.write("\n")
                         segment_w_chunks.append(chunk_dl_rates)
+                        
+                        #with open('/mnt/QUIClientServer0/https1_proper_chunk_rate.txt', 'a') as rate_f:
+                        #    rate_f.write("#####################\n")
             #            with open('/mnt/QUIClientServer0/tst_hyper_http1_read_mod_chunk_time_rate.txt', 'a') as rate_f:
             #                rate_f.write("\n End of segment:{}\n".format(segment_url))
                         break
@@ -217,8 +220,8 @@ def download_segment(segment_url, dash_folder):
                     total_data_dl_time += chunk_dl_time
                     current_chunk_dl_rate = segment_size * 8 / total_data_dl_time
                     chunk_dl_rates.append(current_chunk_dl_rate)
-                    #with open('/mnt/QUIClientServer0/tst_hyper_http1_read_mod_chunk_time_rate.txt', 'a') as rate_f:
-                    #    rate_f.write(str(segment_size)+'\t'+str(total_data_dl_time)+'\t'+str(current_chunk_dl_rate)+'\n')
+                    #with open('/mnt/QUIClientServer0/https1_proper_chunk_rate.txt', 'a') as rate_f:
+                    #    rate_f.write("{}/{}={}\n".format(segment_size*8,total_data_dl_time,current_chunk_dl_rate))
         
                     #print (len(segment_w_chunks))
                         #print segment_w_chunks
@@ -503,8 +506,8 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 # current_bitrate = empirical_dash.empirical_dash(average_segment_sizes, segment_number, bitrates, segment_download_time, current_bitrate, dash_player.buffer.qsize(), segment_size, get_segment_sizes(dp_object,segment_number-2), video_segment_duration, dl_rate_history, bitrate_history, segment_w_chunks, DOWNLOAD_CHUNK)
                 emp_func_time=timeit.default_timer()
                 current_bitrate = empirical_dash.empirical_dash(average_segment_sizes, segment_number, bitrates, segment_download_time, current_bitrate, dash_player.buffer.__len__(), segment_size, get_segment_sizes(dp_object,segment_number-2), video_segment_duration, dl_rate_history, bitrate_history, segment_w_chunks, DOWNLOAD_CHUNK) #MZ
-                with open("/mnt/QUIClientServer0/http1_seg_time",'a') as seg_time:
-                    seg_time.write("{},{}\n".format(segment_number,timeit.default_timer()-emp_func_time))
+                #with open("/mnt/QUIClientServer0/http1_seg_time",'a') as seg_time:
+                #    seg_time.write("{},{}\n".format(segment_number,timeit.default_timer()-emp_func_time))
 
                 bitrates = [float(i) for i in bitrates]
                 
@@ -592,7 +595,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         RETRANSMISSION_SWITCH = True
                         original_segment_number = segment_number
                         original_current_bitrate = current_bitrate
-                        current_bitrate, segment_number = retransmission.retransmission(dp_object, current_bitrate, segment_number, dash_player.buffer, bitrates, segment_download_rate, config_dash.NETFLIX_BUFFER_SIZE, video_segment_duration)
+                        current_bitrate, segment_number, retx_flag = retransmission.retransmission(dp_object, current_bitrate, segment_number, dash_player.buffer, bitrates, segment_download_rate, config_dash.NETFLIX_BUFFER_SIZE, video_segment_duration)
                         if dash_player.buffer.__len__() < (RETRANS_THRESHOLD_LOWER * config_dash.NETFLIX_BUFFER_SIZE):
                             RETRANSMISSION_SWITCH = False
                         #dl_rate based retransmission:
