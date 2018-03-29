@@ -226,6 +226,11 @@ def download_segment(segment_url, dash_folder):
                         total_data_dl_time=0
                         continue
         if "DONE" in str(msg):
+            with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_QUIC.txt','a') as chk:
+                            chk.write("%s" %segment_url)
+                            for item in seg_dw_object.segment_chunk_rates:
+                                chk.write(",%s" %item)
+                            chk.write("\n")
             break
         else:
             i=msg
@@ -415,12 +420,12 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     original_segment_number = 1
     while segment_number < len(dp_list):
         try:
-        	if retx_flag==False:
+        	#if retx_flag==False:
                 	while thread_seg.is_alive():
                    		pass
-        	else:
-        		while thread_seg.is_alive() and retx_thread==True:
-        			pass
+        	#else:
+        		#while thread_seg.is_alive() and retx_thread==True:
+        		#	pass
         except NameError as e:
                    print ("Thread not Created")
 	#if retransmission_delay_switch == True:
@@ -843,14 +848,14 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         retx_flag=False # set before starting retx
                         thread_retx=Process(target=retx_download_segment,args=(retx_segment_url, file_identifier,retrans_next_segment_size, video_segment_duration, dash_player.current_play_segment, retx_segment_number))
                         thread_retx.start()
-                        retx_thread=True
+                        #retx_thread=True
                 except NameError:
                         config_dash.LOG.info("{}: Started downloading 1st retx_segment {}".format(playback_type.upper(), retx_segment_url))
                         retx_flag=False
                         thread_retx=Process(target=retx_download_segment,args=(retx_segment_url, file_identifier,retrans_next_segment_size, video_segment_duration, dash_player.current_play_segment, retx_segment_number))
                         #thread_retx=threading.Thread(target=retx_download_segment,args=(retx_segment_url, file_identifier, retrans_next_segment_size, video_segment_duration, dash_player.current_play_segment, retx_segment_number))
                         thread_retx.start()
-                        retx_thread=True
+                        #retx_thread=True
                         config_dash.LOG.info("RETX_START")
                 
                 
