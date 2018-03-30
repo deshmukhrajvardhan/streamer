@@ -80,8 +80,8 @@ def get_mpd(url):
     try:
         global ssl_context 
         ssl_context = hyper.tls.init_context()
-        ssl_context.load_cert_chain(certfile='/mnt/QUIClientServer0/cert.crt', keyfile='/mnt/QUIClientServer0/cert.key')
-        ssl_context.load_verify_locations(cafile='/mnt/QUIClientServer0/cert.pem')
+        ssl_context.load_cert_chain(certfile='/dev/SQUAD/cert.crt', keyfile='/dev/SQUAD/cert.key')
+        ssl_context.load_verify_locations(cafile='/dev/SQUAD/cert.pem')
         parse_url = urllib.parse.urlparse(url)
         print("___________++++")
         print(parse_url.netloc, parse_url.path)
@@ -196,20 +196,20 @@ def download_segment(segment_url, dash_folder):
                 for segment_data in seg_conn.read_chunked_give_size(DOWNLOAD_CHUNK):
                     if segment_data is -1:
             #            print("end of segment")
-                        with open('/mnt/QUIClientServer0/chunk_rate_read_mod_chunk_squad_hyper_HTTP1.txt','a') as chk:
+                        with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_hyper_HTTP1.txt','a') as chk:
                             chk.write("%s" %segment_url)
                             for item in chunk_dl_rates:
                                 chk.write(",%s" %item)
                             chk.write("\n")
                         segment_w_chunks.append(chunk_dl_rates)
                         
-                        #with open('/mnt/QUIClientServer0/https1_proper_chunk_rate.txt', 'a') as rate_f:
+                        #with open('/dev/SQUAD/https1_proper_chunk_rate.txt', 'a') as rate_f:
                         #    rate_f.write("#####################\n")
-            #            with open('/mnt/QUIClientServer0/tst_hyper_http1_read_mod_chunk_time_rate.txt', 'a') as rate_f:
+            #            with open('/dev/SQUAD/tst_hyper_http1_read_mod_chunk_time_rate.txt', 'a') as rate_f:
             #                rate_f.write("\n End of segment:{}\n".format(segment_url))
                         break
                 
-#                    with open('/mnt/QUIClientServer0/tst_data_read_mod_chunk_hyper_HTTP1','ab') as movie:
+#                    with open('/dev/SQUAD/tst_data_read_mod_chunk_hyper_HTTP1','ab') as movie:
  #                       movie.write(segment_data)
                     segment_file_handle.write(segment_data)
                     segment_size += len(segment_data)
@@ -220,7 +220,7 @@ def download_segment(segment_url, dash_folder):
                     total_data_dl_time += chunk_dl_time
                     current_chunk_dl_rate = segment_size * 8 / total_data_dl_time
                     chunk_dl_rates.append(current_chunk_dl_rate)
-                    #with open('/mnt/QUIClientServer0/https1_proper_chunk_rate.txt', 'a') as rate_f:
+                    #with open('/dev/SQUAD/https1_proper_chunk_rate.txt', 'a') as rate_f:
                     #    rate_f.write("{}/{}={}\n".format(segment_size*8,total_data_dl_time,current_chunk_dl_rate))
         
                     #print (len(segment_w_chunks))
@@ -506,7 +506,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 # current_bitrate = empirical_dash.empirical_dash(average_segment_sizes, segment_number, bitrates, segment_download_time, current_bitrate, dash_player.buffer.qsize(), segment_size, get_segment_sizes(dp_object,segment_number-2), video_segment_duration, dl_rate_history, bitrate_history, segment_w_chunks, DOWNLOAD_CHUNK)
                 emp_func_time=timeit.default_timer()
                 current_bitrate = empirical_dash.empirical_dash(average_segment_sizes, segment_number, bitrates, segment_download_time, current_bitrate, dash_player.buffer.__len__(), segment_size, get_segment_sizes(dp_object,segment_number-2), video_segment_duration, dl_rate_history, bitrate_history, segment_w_chunks, DOWNLOAD_CHUNK) #MZ
-                #with open("/mnt/QUIClientServer0/http1_seg_time",'a') as seg_time:
+                #with open("/dev/SQUAD/http1_seg_time",'a') as seg_time:
                 #    seg_time.write("{},{}\n".format(segment_number,timeit.default_timer()-emp_func_time))
 
                 bitrates = [float(i) for i in bitrates]
@@ -574,7 +574,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 # if dash_player.buffer.qsize() >= (config_dash.NETFLIX_BUFFER_SIZE):
                 if segment_size and segment_download_time:
                     segment_download_rate = segment_size / segment_download_time
-                    #with open('/mnt/QUIClientServer0/http2_read_seg_size_rate.txt', 'a') as rate_f:
+                    #with open('/dev/SQUAD/http2_read_seg_size_rate.txt', 'a') as rate_f:
                         #rate_f.write(str(segment_size)+'\t'+str(segment_download_rate)+'\n')
                 else:
                     segment_download_rate = 0
@@ -667,7 +667,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             return None
         segment_download_time = timeit.default_timer() - start_time
         segment_download_rate=segment_size/segment_download_time
-        #with open('/mnt/QUIClientServer0/tst_hyper_http1_read_mod_chunk_seg_time_rate.txt', 'a') as rate_f:
+        #with open('/dev/SQUAD/tst_hyper_http1_read_mod_chunk_seg_time_rate.txt', 'a') as rate_f:
          #               rate_f.write(str(segment_size)+'\t'+str(segment_download_time)+'\t'+str(segment_download_rate*8)+'\n')
         previous_segment_times.append(segment_download_time)
         recent_download_sizes.append(segment_size)

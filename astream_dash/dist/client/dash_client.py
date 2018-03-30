@@ -62,6 +62,7 @@ PLAYBACK = DEFAULT_PLAYBACK
 DOWNLOAD = False
 SEGMENT_LIMIT = None
 connection = requests.Session()
+connection.cert='/dev/SQUAD/cert.crt'
 download_log_file = config_dash.DOWNLOAD_LOG_FILENAME
 
 
@@ -93,7 +94,7 @@ def get_mpd(url):
         config_dash.LOG.info("MPD URL %s" %parse_url.path)
         '''
         #connection = HTTPConnectionPool(parse_url.netloc)
-        mpd_conn = connection.get(url) 
+        mpd_conn = connection.get(url, cert='/dev/SQUAD/cert.pem') 
 
     except urllib2.HTTPError, error:
         config_dash.LOG.error("Unable to download MPD file HTTP Error: %s" % error.code)
@@ -166,7 +167,7 @@ def download_segment(segment_url, dash_folder):
         
         chunk_number = 0
         chunk_start_time = timeit.default_timer()
-        with closing(connection.get(segment_url, stream=True)) as seg_conn:
+        with closing(connection.get(segment_url, cert='/dev/SQUAD/cert.pem', stream=True)) as seg_conn:
             with open(segment_filename,'wb') as segment_file_handle:
                 for segment_data in seg_conn.iter_content(DOWNLOAD_CHUNK):
                     if segment_data is None:
@@ -180,7 +181,7 @@ def download_segment(segment_url, dash_folder):
                         total_data_dl_time += chunk_dl_time
                         current_chunk_dl_rate = segment_size * 8 / total_data_dl_time
                         chunk_dl_rates.append(current_chunk_dl_rate)
-                        with open('/mnt/QUIClientServer0/chunk_rate_iter_squad_requests_HTTP1.txt','a') as chk:
+                        with open('/dev/SQUAD/chunk_rate_iter_squad_requests_HTTP1.txt','a') as chk:
                             chk.write("%s" %segment_url)
                             for item in chunk_dl_rates:
                                 chk.write(",%s" %item)

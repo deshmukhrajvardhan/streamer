@@ -27,7 +27,7 @@ LOG_NAME = 'AStream_log'
 LOG_LEVEL = None
 
 # Set '-' to print to screen
-LOG_FOLDER = "/mnt/QUIClientServer0/ASTREAM_LOGS/"
+LOG_FOLDER = "/dev/SQUAD/ASTREAM_LOGS/"
 if not os.path.exists(LOG_FOLDER):
     os.makedirs(LOG_FOLDER)
 
