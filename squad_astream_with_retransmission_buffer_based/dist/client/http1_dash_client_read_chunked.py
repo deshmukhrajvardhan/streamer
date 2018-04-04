@@ -401,11 +401,11 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 #with open('sara-dash-chosen-rate.txt', 'a') as sara:
                     #sara.write(str(current_bitrate) + '\t' + str(segment_download_rate) + '\n')
                 if not os.path.exists(download_log_file):
-                            header_row = "EpochTime, CurrentBufferSize, Bitrate, DownloadRate".split(",")
-                            stats = ((timeit.default_timer()-start_dload_time), str(dash_player.buffer.__len__()), current_bitrate, segment_download_rate)
+                            header_row = "EpochTime,CurrentBufferSize,Bitrate,DownloadRate,SegmentDownloadTime,SegmentSize".split(",")
+                            stats = ((timeit.default_timer()-start_dload_time), str(dash_player.buffer.__len__()), current_bitrate, segment_download_rate,segment_download_time,segment_size)
                 else:
                             header_row=None
-                            stats = ((timeit.default_timer()-start_dload_time), str(dash_player.buffer.__len__()), current_bitrate, segment_download_rate)
+                            stats = ((timeit.default_timer()-start_dload_time), str(dash_player.buffer.__len__()), current_bitrate, segment_download_rate,segment_download_time,segment_size)
                 str_stats = [str(i) for i in stats]
                 with open(download_log_file, "a") as log_file_handle:
                             result_writer = csv.writer(log_file_handle, delimiter=",")
@@ -631,11 +631,11 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 print (urllib.parse.urljoin(domain, segment_path))
                 print ("-------------+++++++++++++")
                 if not os.path.exists(download_log_file):
-                            header_row = "EpochTime, CurrentBufferSize, Bitrate, DownloadRate, SegmentNumber".split(",")
-                            stats = (timeit.default_timer()-start_dload_time, str(dash_player.buffer.__len__()), current_bitrate, segment_download_rate, segment_number)
+                            header_row = "EpochTime,CurrentBufferSize,Bitrate,DownloadRate,SegmentNumber,SegmentSize,SegmentDownloadTime".split(",")
+                            stats = (timeit.default_timer()-start_dload_time, str(dash_player.buffer.__len__()), current_bitrate, segment_download_rate, segment_number,segment_size,segment_download_time)
                 else:
                             header_row=None
-                            stats = (timeit.default_timer()-start_dload_time, str(dash_player.buffer.__len__()), current_bitrate, segment_download_rate,segment_number)
+                            stats = (timeit.default_timer()-start_dload_time, str(dash_player.buffer.__len__()), current_bitrate, segment_download_rate,segment_number,segment_size,segment_download_time)
                 str_stats = [str(i) for i in stats]
                 with open(download_log_file, "a") as log_file_handle:
                             result_writer = csv.writer(log_file_handle, delimiter=",")
@@ -659,13 +659,19 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             config_dash.LOG.debug("SLEPT for {}seconds ".format(time.time() - delay_start))
         start_time = timeit.default_timer()
         try:
+            time_till_next_get = start_time - download_done_time
+        except:
+            time_till_next_get = 0
+
+        try:
             config_dash.LOG.info("{}: Started downloading segment {}".format(playback_type.upper(), segment_url))
             segment_size, segment_filename, segment_w_chunks = download_segment(segment_url, file_identifier)
             config_dash.LOG.info("{}: Finished Downloaded segment {}".format(playback_type.upper(), segment_url))
         except IOError as e:
             config_dash.LOG.error("Unable to save segment: {0}".format(e.filename))
             return None
-        segment_download_time = timeit.default_timer() - start_time
+        download_done_time = timeit.default_timer()
+        segment_download_time = download_done_time - start_time
         segment_download_rate=segment_size/segment_download_time
         #with open('/dev/SQUAD/tst_hyper_http1_read_mod_chunk_seg_time_rate.txt', 'a') as rate_f:
          #               rate_f.write(str(segment_size)+'\t'+str(segment_download_time)+'\t'+str(segment_download_rate*8)+'\n')
@@ -673,6 +679,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         recent_download_sizes.append(segment_size)
         # Updating the JSON information
         segment_name = os.path.split(segment_url)[1]
+        with open('/dev/SQUAD/http1_btw_Done_next_GET','a') as reqgap:
+                        reqgap.write("{}\n".format(time_till_next_get))
+
         if "segment_info" not in config_dash.JSON_HANDLE:
             config_dash.JSON_HANDLE["segment_info"] = list()
         config_dash.JSON_HANDLE["segment_info"].append((segment_name, current_bitrate, segment_size,
