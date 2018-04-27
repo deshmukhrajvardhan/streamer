@@ -144,8 +144,7 @@ class DashPlayer:
                     if self.playback_timer.time() == self.playback_duration:
                         self.set_state("END")
                         self.log_entry("Play-End")
-                        os.system("sudo pkill persistent")
-                    # if self.buffer.qsize() == 0:
+                        # if self.buffer.qsize() == 0:
                     if self.buffer.__len__() == 0: #MZ
                         config_dash.LOG.info("Buffer empty after {} seconds of playback".format(
                             self.playback_timer.time()))
@@ -181,7 +180,7 @@ class DashPlayer:
                             config_dash.LOG.info("Completed the video playback: {} seconds".format(
                                 self.playback_duration))
                             self.playback_timer.pause()
-                            os.system("sudo pkill persistent")
+                            os.system("sudo pkill -9 quic_persistent")
                             self.set_state("END")
                             self.log_entry("TheEnd")
                             return
