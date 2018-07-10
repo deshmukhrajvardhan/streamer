@@ -6,8 +6,8 @@ DOWNLOAD_CHUNK = 15000
 
 def download_vid():
     ssl_context = hyper.tls.init_context()
-    ssl_context.load_cert_chain(certfile='/dev/SQUAD/cert.crt', keyfile='/dev/SQUAD/cert.key')
-    ssl_context.load_verify_locations(cafile='/dev/SQUAD/cert.pem')
+    ssl_context.load_cert_chain(certfile='~/cert.crt', keyfile='~/cert.key')
+    ssl_context.load_verify_locations(cafile='~/cert.pem')
     parse_url = urllib.parse.urlparse("https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets")
     connection = hyper.HTTP11Connection(parse_url.netloc, ssl_context=ssl_context, secure=True, port=9000)
     connection.network_buffer_size= DOWNLOAD_CHUNK
@@ -24,8 +24,7 @@ def download_vid():
                        break
                     segment_file_handle.write(segment_data)
                     segment_data = seg_conn.read(DOWNLOAD_CHUNK)
-            seg_conn.close() 
-                    
+            seg_conn.close()
         except:
             print("Unable to download DASH Segment {} HTTP Error:{} ".format(segment_url, sys.exc_info()))
             return None
