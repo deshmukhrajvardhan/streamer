@@ -18,12 +18,13 @@ def download_vid():
         try:
             seg_resp_conn = connection.request('GET',segment_url)
             seg_conn = connection.get_response()
-            with open("/users/rdeshm0/hyper_test/vid.m4s",'wb') as segment_file_handle:
+            with open("~/vid.m4s",'wb') as segment_file_handle:
                 for segment_data in seg_conn.read_chunked_give_size(DOWNLOAD_CHUNK):
                     if segment_data is -1:
                        break
                     segment_file_handle.write(segment_data)
                     segment_data = seg_conn.read(DOWNLOAD_CHUNK)
+            seg_conn.close() 
                     
         except:
             print("Unable to download DASH Segment {} HTTP Error:{} ".format(segment_url, sys.exc_info()))
