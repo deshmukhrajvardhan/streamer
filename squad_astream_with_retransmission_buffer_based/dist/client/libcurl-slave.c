@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
+#include <string>
+#include <iostream>
+#include <future>
 /* curl stuff */
 #include <curl/curl.h>
 
@@ -12,26 +13,29 @@
 #include <string.h>
 #include <stdbool.h>
 
-//using namespace std::string;
+using std::string;
+//using std::cout;
 // Read Msg
-char* ReadMsg(char *myfifor,char *myfifow, bool stream, key_t key){
-  printf("EnteredRead\n");
+
+string ReadMsg(char *myfifor,char *myfifow, bool stream, key_t key){
+  std::cout << "EnteredRead\n";
   int msgid;
   struct mesg_buffer {
     long mesg_type;
     char mesg_text[200];
   };
   mesg_buffer msg;
-  char cmd[]="";
+  string cmd="";
   msgid = msgget(key, 0666 | IPC_CREAT);
   ssize_t numbytes=0;
   while (numbytes==0){
     numbytes=msgrcv(msgid, &msg, sizeof(msg.mesg_text),1,1);
+    std::cout<<"numb:"<<numbytes<<std::endl;
   }
-  char* message(msg.mesg_text, numbytes);
-  printf("Received:%s\n",message);//<<"\t"<<endl;
+  string message(msg.mesg_text, numbytes);
+  std::cout<<"Received:"<< message<<"\t"<<std::endl;
   if (message.compare("QUIT")==0){
-    printf("QUIT\n");
+    std::cout << "QUIT" << std::endl;
   }
 
   else if (message.compare("CREATE_CONN")==0){
@@ -45,11 +49,11 @@ char* ReadMsg(char *myfifor,char *myfifow, bool stream, key_t key){
   else if (message.compare("CREATE_STREAM")==0){
     cmd="stream";
     //unlink(myfifor);
-    printf("Stream created\n");
+    std::cout << "Stream created" << std::endl;
     return cmd;
   }
   else {
-    printf("Stream Received %s\n",message);// << endl;
+    std::cout <<"Stream Received" << message << std::endl;
     return message;
 
     //unlink(myfifor);
@@ -71,17 +75,18 @@ int WriteMsg(char* myfifow, int cmd, key_t key){
   message.mesg_type = 1;
 
   if (cmd==1){
-    std::string msg="CONN_CREATED";
+    string msg="CONN_CREATED";
     strcpy(message.mesg_text,msg.c_str());
   }
   else {
-    std::string msg="FAIL";
+    string msg="FAIL";
     strcpy(message.mesg_text,msg.c_str());
   }
 
   msgsnd(msgid, &message, sizeof(message), 0);
   return 0;
 }
+
 
 /* libcurl code */
 struct MemoryStruct {
@@ -95,7 +100,7 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
 
-  mem->memory = realloc(mem->memory, mem->size + realsize + 1);
+  mem->memory = (char *) realloc(mem->memory, mem->size + realsize + 1);
   if(mem->memory == NULL) {
     /* out of memory! */
     printf("not enough memory (realloc returned NULL)\n");
@@ -106,7 +111,8 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
   mem->size += realsize;
   mem->memory[mem->size] = 0;
   
-  printf("\nWriting: %d Bytes in memory",mem->size);
+  //printf("\nWriting: %d Bytes in memory",mem->size);
+  std::cout << "\nWriting:"<< mem->size <<"Bytes in memory\n";
 
   return realsize;
 }
@@ -147,19 +153,19 @@ int main(){
   //for (int j = 0; j < 74; j++) {
   // get url
   char *myfifor = (char*)"./fifopipe";
-  key_t keyw=262144;
+  char *myfifow = (char*)"/tmp/fifowpipe";
+  key_t key_py_r=262145;
   bool stream_send=false;
 
-  auto future2 = std::async(ReadMsg, myfifor,myfifow, stream_send, keyr);
-  read_ret = future2.get();
+  auto future2 = std::async(ReadMsg, myfifor,myfifow, stream_send, key_py_r);
+  auto read_ret = future2.get();
   if (read_ret=="conn"){
-    future2 = std::async(ReadMsg, myfifor,myfifow, stream_send, keyr);
-    host = future2.get();
-    future2 = std::async(ReadMsg, myfifor,myfifow, stream_send, keyr);
-    port = stoi(future2.get());
-    future2 = std::async(ReadMsg, myfifor,myfifow, stream_send, keyr);
-    urls=future2.get();
-
+    future2 = std::async(ReadMsg, myfifor,myfifow, stream_send, key_py_r);
+    auto host = future2.get();
+    future2 = std::async(ReadMsg, myfifor,myfifow, stream_send, key_py_r);
+    int port = std::stoi(future2.get());
+    future2 = std::async(ReadMsg, myfifor,myfifow, stream_send, key_py_r);
+    auto urls=future2.get();
     //const base::CommandLine::StringVector& urls = &ur_res;
   }
 
@@ -167,8 +173,8 @@ int main(){
 
 
 
-    chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
-    chunk.size = 0;    /* no data at this point */
+  chunk.memory = (char *)malloc(1);  /* will be grown as needed by the realloc above */
+  chunk.size = 0;    /* no data at this point */
 
     for (int i = 0; i < NUM_HANDLES; i++) {
       char url[1024];
