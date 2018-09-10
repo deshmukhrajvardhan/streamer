@@ -11,6 +11,8 @@
 /* curl stuff */
 #include <curl/curl.h>
 
+#define MAX_CHUNK_SIZE 15000
+
 struct MemoryStruct {
   char *memory;
   size_t size;
@@ -18,6 +20,8 @@ struct MemoryStruct {
 
 struct HandleChange {
   int prev_run,still_running,change,seg_num;
+  double content_len;
+  size_t chunk_size;
 } handleChange;
 
 static size_t header_callback(char *buffer, size_t size,
@@ -44,17 +48,31 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
   memcpy(&(mem->memory[mem->size]), contents, realsize);
   mem->size += realsize;
   mem->memory[mem->size] = 0;
+  
+  
+  //  handleChange.chunk_size+= realsize;
 
   if(handleChange.change) {
-    printf("\nWrite Still_running:%d,Segment num:%d",handleChange.still_running,++handleChange.seg_\
-num);
+    printf("\nWrite Still_running:%d,Segment num:%d",handleChange.still_running,++handleChange.seg_num);//,handleChange.content_len);,content_length:%.0f
+    //    printf("\n ChunkSize:%d",realsize);//handleChange.chunk_size);
+    handleChange.change=0;
+    //    handleChange.chunk_size=0;
   }
-  handleChange.change=0;
+    printf("\n ChunkSize:%d",realsize);//handleChange.chunk_size);
+
+  //  if(handleChange.chunk_size>=MAX_CHUNK_SIZE) {
+  //    printf("\n ChunkSize:%d",handleChange.chunk_size);
+  //    handleChange.chunk_size=0;
+  //  }
+
+  //  handleChange.chunk_size+= realsize;
+
+
   return realsize;
 }
 
 int main(){
-  //check nghttp2 supprt                                                                            
+  //check nghttp2 supprt                                                                           
   const curl_version_info_data *data = curl_version_info(CURLVERSION_NOW);
   if(data->features & CURL_VERSION_HTTP2){
     fprintf(stdout, "This libcurl DOES have HTTP2 support!\n");
@@ -72,12 +90,12 @@ int main(){
 
   struct MemoryStruct chunk;
 
-  // Create multi handle with multiplex over a single connection                                    
+  // Create multi handle with multiplex over a single connection                                   
   CURLM *multi_handle = curl_multi_init();
   curl_multi_setopt(multi_handle, CURLMOPT_MAX_HOST_CONNECTIONS, (long) 1L);
   curl_multi_setopt(multi_handle, CURLMOPT_PIPELINING, CURLPIPE_HTTP1 | CURLPIPE_MULTIPLEX);
 
-  //fd                                                                                              
+  //fd                                                                                             
   struct timeval timeout;
   int rc;
   fd_set fdread;
@@ -103,7 +121,8 @@ int main(){
   mc = curl_multi_fdset(multi_handle, &fdread, &fdwrite, &fdexcep, &maxfd);
   int NUM_HANDLES = 2;
   CURL *easy[NUM_HANDLES];
-  handleChange.seg_num=0; //count total number of segments
+  handleChange.seg_num=0; // count total number of segments
+  handleChange.chunk_size=0; // get chunks of almost fixed size 
   for (int j = 0; j < 2; j++) {
 
     chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
@@ -112,9 +131,8 @@ int main(){
     for (int i = 0; i < NUM_HANDLES; i++) {
       char url[1024];
 
-      snprintf(url, 1024, "https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/Bi\
-gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",((j*2)+(i+1)));
-      //snprintf(url, 1024, "https://http2.akamai.com/demo");                                       
+      snprintf(url, 1024, "https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",((j*2)+(i+1)));
+      //snprintf(url, 1024, "https://http2.akamai.com/demo");                                      
       easy[i] = curl_easy_init();
       curl_easy_setopt(easy[i], CURLOPT_VERBOSE, 1L);
       printf("\nurl:%s",url);
@@ -139,7 +157,8 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",((j*2)+(i+1)));
     handleChange.prev_run=handleChange.still_running;
 
     int cycle=0;
-    double cl; //header len                                                                         
+    double cl; //header len, struct didn't work as it changes in write callback                    
+ 
     do {
       struct timeval timeout;
       int rc; /* select() return code */
@@ -195,7 +214,7 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",((j*2)+(i+1)));
 #endif
       }
       else {
-        /* Note that on some platforms 'timeout' may be modified by select().                       
+        /* Note that on some platforms 'timeout' may be modified by select().                      
            If you need access to the original value save a copy beforehand. */
         rc = select(maxfd + 1, &fdread, &fdwrite, &fdexcep, &timeout);
       }
@@ -209,31 +228,32 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",((j*2)+(i+1)));
         /* timeout or readable/writable sockets */
         curl_multi_perform(multi_handle, &handleChange.still_running);
 
-        res = curl_easy_getinfo(easy[(NUM_HANDLES-1)-handleChange.still_running], CURLINFO_CONTENT_\
-LENGTH_DOWNLOAD, &cl);
-        // individual response end                                                                  
+        res = curl_easy_getinfo(easy[(NUM_HANDLES-1)-handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
+
+        // individual response end                                                                 
         if(handleChange.prev_run!=handleChange.still_running) {
           printf("\nStill_running:%d",handleChange.still_running);
-          handleChange.change=1; //count segments and get streamID                                  
-          //                                                                                        
+          handleChange.change=1; //count segments and get streamID                          
           if(!res) {
-            printf("--------------Size: %.0f---------------\n", cl);
+	    handleChange.content_len = cl;
+            printf("--------------Size: %.0f---------------\n", handleChange.content_len);
           }
 
         }
         handleChange.prev_run=handleChange.still_running;
         break;
       }
-      //      printf("\nin cycle:%d\n",cycle++);                                                    
+      //      printf("\nin cycle:%d\n",cycle++);                                                  
+ 
     } while(handleChange.still_running);
         
-    free(chunk.memory); // essentially data from parallel streams is stored in memory               
-                        // and cleared when we move to next set of parallel stream downloads        
+    free(chunk.memory); // essentially data from parallel streams is stored in memory              
+                        // and cleared when we move to next set of parallel stream downloads       
   }
-    //cleanups                                                                                      
-    for(int i = 0; i < NUM_HANDLES; i++)
-      curl_easy_cleanup(easy[i]);
-    curl_multi_cleanup(multi_handle);
+  //cleanups                                                                                      
+  for(int i = 0; i < NUM_HANDLES; i++)
+    curl_easy_cleanup(easy[i]);
+  curl_multi_cleanup(multi_handle);
 
   exit(0);
 }
