@@ -2,6 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#define SHORT_SLEEP Sleep(100)
+#else
+#define SHORT_SLEEP usleep(100000)
+#endif
+
 /* curl stuff */
 #include <curl/curl.h>
 
@@ -9,6 +15,10 @@ struct MemoryStruct {
   char *memory;
   size_t size;
 };
+
+struct HandleChange {
+  int prev_run,still_running,change,seg_num;
+} handleChange;
 
 static size_t header_callback(char *buffer, size_t size,
                               size_t nitems, void *userdata)
@@ -35,8 +45,11 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
   mem->size += realsize;
   mem->memory[mem->size] = 0;
 
-  //  printf("\nWriting: %d Bytes in memory",mem->size);                                            
-
+  if(handleChange.change) {
+    printf("\nWrite Still_running:%d,Segment num:%d",handleChange.still_running,++handleChange.seg_\
+num);
+  }
+  handleChange.change=0;
   return realsize;
 }
 
@@ -48,7 +61,14 @@ int main(){
   } else {
     fprintf(stdout, "This libcurl does NOT have HTTP/2 support!\n");
   }
+
   CURLcode res;
+  CURL *eh=NULL;
+  CURLMsg *msg=NULL;
+  CURLcode return_code=0;
+  int i=0, msgs_left=0;
+  int http_status_code;
+  const char *szUrl;
 
   struct MemoryStruct chunk;
 
@@ -57,10 +77,33 @@ int main(){
   curl_multi_setopt(multi_handle, CURLMOPT_MAX_HOST_CONNECTIONS, (long) 1L);
   curl_multi_setopt(multi_handle, CURLMOPT_PIPELINING, CURLPIPE_HTTP1 | CURLPIPE_MULTIPLEX);
 
-  // Add some requests                                                                              
-  //int NUM_HANDLES = 1;                                                                            
+  //fd                                                                                              
+  struct timeval timeout;
+  int rc;
+  fd_set fdread;
+  CURLMcode mc;
+  fd_set fdwrite;
+  fd_set fdexcep;
+  int maxfd = -1;
+
+  long curl_timeo;
+
+  curl_multi_timeout(multi_handle, &curl_timeo);
+  if(curl_timeo < 0)
+    curl_timeo = 1000;
+
+  timeout.tv_sec = curl_timeo / 1000;
+  timeout.tv_usec = (curl_timeo % 1000) * 1000;
+
+  FD_ZERO(&fdread);
+  FD_ZERO(&fdwrite);
+  FD_ZERO(&fdexcep);
+
+  /* get file descriptors from the transfers */
+  mc = curl_multi_fdset(multi_handle, &fdread, &fdwrite, &fdexcep, &maxfd);
   int NUM_HANDLES = 2;
   CURL *easy[NUM_HANDLES];
+  handleChange.seg_num=0; //count total number of segments
   for (int j = 0; j < 2; j++) {
 
     chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
@@ -88,31 +131,104 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",((j*2)+(i+1)));
 
       curl_multi_add_handle(multi_handle, easy[i]);
     }
+    /* we start some action by calling perform right away */
+    handleChange.still_running=0;
+    handleChange.change=1;
 
-    //perform requests                                                                              
-    int still_running = 1;
-    int once=1;
-    int number_of_streams=0;
-    double dupe=0;
-    while(still_running){
-      res=curl_multi_perform(multi_handle, &still_running);
-            if(!res && number_of_streams<NUM_HANDLES) {
-        /* check the size */
-        double cl;
-        res = curl_easy_getinfo(easy[number_of_streams], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
-        if(cl>0 && dupe!=cl) {
-          dupe=cl;
-          number_of_streams++;
+    curl_multi_perform(multi_handle, &handleChange.still_running);
+    handleChange.prev_run=handleChange.still_running;
+
+    int cycle=0;
+    double cl; //header len                                                                         
+    do {
+      struct timeval timeout;
+      int rc; /* select() return code */
+      CURLMcode mc; /* curl_multi_fdset() return code */
+
+      fd_set fdread;
+      fd_set fdwrite;
+      fd_set fdexcep;
+      int maxfd = -1;
+
+      long curl_timeo = -1;
+
+      FD_ZERO(&fdread);
+      FD_ZERO(&fdwrite);
+      FD_ZERO(&fdexcep);
+
+      /* set a suitable timeout to play around with */
+      timeout.tv_sec = 1;
+      timeout.tv_usec = 0;
+
+      curl_multi_timeout(multi_handle, &curl_timeo);
+      if(curl_timeo >= 0) {
+        timeout.tv_sec = curl_timeo / 1000;
+        if(timeout.tv_sec > 1)
+          timeout.tv_sec = 1;
+        else
+          timeout.tv_usec = (curl_timeo % 1000) * 1000;
+      }
+
+      /* get file descriptors from the transfers */
+      mc = curl_multi_fdset(multi_handle, &fdread, &fdwrite, &fdexcep, &maxfd);
+
+      if(mc != CURLM_OK) {
+        fprintf(stderr, "curl_multi_fdset() failed, code %d.\n", mc);
+        break;
+      }
+      //fprintf(stderr, "curl_multi_fdset() failed, code %d.\n", mc);                               
+
+      /* On success the value of maxfd is guaranteed to be >= -1. We call                           
+       select(maxfd + 1, ...); specially in case of (maxfd == -1) there are                         
+       no fds ready yet so we call select(0, ...) --or Sleep() on Windows--                         
+       to sleep 100ms, which is the minimum suggested value in the                                  
+       curl_multi_fdset() doc. */
+
+      if(maxfd == -1) {
+#ifdef _WIN32
+        Sleep(100);
+        rc = 0;
+#else
+        /* Portable sleep for platforms other than Windows. */
+        struct timeval wait = { 0, 100 * 1000 }; /* 100ms */
+        rc = select(0, NULL, NULL, NULL, &wait);
+#endif
+      }
+      else {
+        /* Note that on some platforms 'timeout' may be modified by select().                       
+           If you need access to the original value save a copy beforehand. */
+        rc = select(maxfd + 1, &fdread, &fdwrite, &fdexcep, &timeout);
+      }
+
+      switch(rc) {
+      case -1:
+        /* select error */
+        break;
+      case 0:
+      default:
+        /* timeout or readable/writable sockets */
+        curl_multi_perform(multi_handle, &handleChange.still_running);
+
+        res = curl_easy_getinfo(easy[(NUM_HANDLES-1)-handleChange.still_running], CURLINFO_CONTENT_\
+LENGTH_DOWNLOAD, &cl);
+        // individual response end                                                                  
+        if(handleChange.prev_run!=handleChange.still_running) {
+          printf("\nStill_running:%d",handleChange.still_running);
+          handleChange.change=1; //count segments and get streamID                                  
+          //                                                                                        
           if(!res) {
             printf("--------------Size: %.0f---------------\n", cl);
           }
-        }
-      }
-          }
 
+        }
+        handleChange.prev_run=handleChange.still_running;
+        break;
+      }
+      //      printf("\nin cycle:%d\n",cycle++);                                                    
+    } while(handleChange.still_running);
+        
     free(chunk.memory); // essentially data from parallel streams is stored in memory               
                         // and cleared when we move to next set of parallel stream downloads        
-
   }
     //cleanups                                                                                      
     for(int i = 0; i < NUM_HANDLES; i++)
