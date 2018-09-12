@@ -21,7 +21,7 @@ struct MemoryStruct {
 struct HandleChange {
   int prev_run,still_running,change,seg_num;
   double content_len;
-  size_t chunk_size;
+  size_t chunk_size,retx_chunk_size;
 } handleChange;
 
 static size_t header_callback(char *buffer, size_t size,
@@ -33,7 +33,7 @@ static size_t header_callback(char *buffer, size_t size,
 }
 
 static size_t
-WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+WriteMemoryCallback2(void *contents, size_t size, size_t nmemb, void *userp)
 {
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
@@ -53,12 +53,51 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
   //  handleChange.chunk_size+= realsize;
 
   if(handleChange.change) {
-    printf("\nWrite Still_running:%d,Segment num:%d",handleChange.still_running,++handleChange.seg_num);//,handleChange.content_len);,content_length:%.0f
+    printf("\nCallback2:Write Still_running:%d,Segment num:%d,Size:%d",handleChange.still_running,++handleChange.seg_num,handleChange.retx_chunk_size);//,handleChange.content_len);,content_length:%.0f
+    //    printf("\n ChunkSize:%d",realsize);//handleChange.chunk_size);
+    handleChange.change=0;
+    //    handleChange.retx_chunk_size=0;
+  }
+  //  printf("\n C2:ChunkSize:%d",realsize);//handleChange.chunk_size);
+  handleChange.retx_chunk_size+= realsize;
+
+  //  if(handleChange.chunk_size>=MAX_CHUNK_SIZE) {
+  //    printf("\n ChunkSize:%d",handleChange.chunk_size);
+  //    handleChange.chunk_size=0;
+  //  }
+
+  //  handleChange.chunk_size+= realsize;
+
+
+  return realsize;
+}
+
+
+static size_t
+WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+  size_t realsize = size * nmemb;
+  struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+
+  mem->memory = realloc(mem->memory, mem->size + realsize + 1);
+  if(mem->memory == NULL) {
+    /* out of memory! */
+    printf("not enough memory (realloc returned NULL)\n");
+    return 0;
+  }
+
+  memcpy(&(mem->memory[mem->size]), contents, realsize);
+  mem->size += realsize;
+  mem->memory[mem->size] = 0;
+  
+  if(handleChange.change) {
+    printf("\nCallback1:Write Still_running:%d,Segment num:%d, Size:%d",handleChange.still_running,++handleChange.seg_num,handleChange.chunk_size);//,handleChange.content_len);,content_length:%.0f
     //    printf("\n ChunkSize:%d",realsize);//handleChange.chunk_size);
     handleChange.change=0;
     //    handleChange.chunk_size=0;
   }
-    printf("\n ChunkSize:%d",realsize);//handleChange.chunk_size);
+  //printf("\n C1:ChunkSize:%d",realsize);//handleChange.chunk_size);
+  handleChange.chunk_size+= realsize;
 
   //  if(handleChange.chunk_size>=MAX_CHUNK_SIZE) {
   //    printf("\n ChunkSize:%d",handleChange.chunk_size);
@@ -89,6 +128,7 @@ int main(){
   const char *szUrl;
 
   struct MemoryStruct chunk;
+  struct MemoryStruct retx_chunk;
 
   // Create multi handle with multiplex over a single connection                                   
   CURLM *multi_handle = curl_multi_init();
@@ -106,7 +146,7 @@ int main(){
 
   long curl_timeo;
 
-  curl_multi_timeout(multi_handle, &curl_timeo);
+  //curl_multi_timeout(multi_handle, &curl_timeo);
   if(curl_timeo < 0)
     curl_timeo = 1000;
 
@@ -116,7 +156,7 @@ int main(){
   FD_ZERO(&fdread);
   FD_ZERO(&fdwrite);
   FD_ZERO(&fdexcep);
-
+  
   /* get file descriptors from the transfers */
   mc = curl_multi_fdset(multi_handle, &fdread, &fdwrite, &fdexcep, &maxfd);
   int NUM_HANDLES = 2;
@@ -128,12 +168,16 @@ int main(){
     chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
     chunk.size = 0;    /* no data at this point */
 
+    retx_chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
+    retx_chunk.size = 0;    /* no data at this point */
+
     for (int i = 0; i < NUM_HANDLES; i++) {
       char url[1024];
 
       snprintf(url, 1024, "https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",((j*2)+(i+1)));
-      //snprintf(url, 1024, "https://http2.akamai.com/demo");                                      
-      easy[i] = curl_easy_init();
+      //snprintf(url, 1024, "https://http2.akamai.com/demo");
+      //if (j==0) {
+	easy[i] = curl_easy_init(); //easy_handle is sticky
       curl_easy_setopt(easy[i], CURLOPT_VERBOSE, 1L);
       printf("\nurl:%s",url);
       curl_easy_setopt(easy[i], CURLOPT_URL, url);
@@ -142,15 +186,34 @@ int main(){
       curl_easy_setopt(easy[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
       curl_easy_setopt(easy[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
       /* send all data to this function  */
-      curl_easy_setopt(easy[i], CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+      //      curl_easy_setopt(easy[i], CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
 
       /* we pass our 'chunk' struct to the callback function */
-      curl_easy_setopt(easy[i], CURLOPT_WRITEDATA, (void *)&chunk);
+      //curl_easy_setopt(easy[i], CURLOPT_WRITEDATA, (void *)&chunk);
+      if(i==0) {
+	curl_easy_setopt(easy[i], CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+	curl_easy_setopt(easy[i], CURLOPT_WRITEDATA, (void *)&chunk);
+      /* we pass our 'chunk' struct to the callback function */
+      }
+      else {
+	/* send all data to this function  */
+      curl_easy_setopt(easy[i], CURLOPT_WRITEFUNCTION, WriteMemoryCallback2);
+
+      /* we pass our 'chunk' struct to the callback function */
+      curl_easy_setopt(easy[i], CURLOPT_WRITEDATA, (void *)&retx_chunk);
+      }
+      //}
+      //      else {
+      //printf("\nurl:%s",url);
+      //curl_easy_setopt(easy[i], CURLOPT_URL, url);
+      //}
 
       curl_multi_add_handle(multi_handle, easy[i]);
     }
     /* we start some action by calling perform right away */
     handleChange.still_running=0;
+    handleChange.retx_chunk_size=0;
+    handleChange.chunk_size=0;
     handleChange.change=1;
 
     curl_multi_perform(multi_handle, &handleChange.still_running);
@@ -228,12 +291,24 @@ int main(){
         /* timeout or readable/writable sockets */
         curl_multi_perform(multi_handle, &handleChange.still_running);
 
-        res = curl_easy_getinfo(easy[(NUM_HANDLES-1)-handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
+	//        res = curl_easy_getinfo(easy[(NUM_HANDLES-1)-handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
+        res = curl_easy_getinfo(easy[handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
 
         // individual response end                                                                 
         if(handleChange.prev_run!=handleChange.still_running) {
           printf("\nStill_running:%d",handleChange.still_running);
-          handleChange.change=1; //count segments and get streamID                          
+          handleChange.change=1; //count segments and get streamID
+       
+	  
+
+	  if(handleChange.still_running==0) {
+	    printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%d",handleChange.still_running,handleChange.seg_num,handleChange.chunk_size);
+	    handleChange.chunk_size=0;
+	  }
+	  else{
+	    printf("\nMain2:Write Still_running:%d,Segment num:%d,Size:%d",handleChange.still_running,handleChange.seg_num,handleChange.retx_chunk_size);
+	    handleChange.retx_chunk_size=0;
+	  }
           if(!res) {
 	    handleChange.content_len = cl;
             printf("--------------Size: %.0f---------------\n", handleChange.content_len);
