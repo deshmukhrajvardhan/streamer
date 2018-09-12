@@ -1,4 +1,5 @@
 import sysv_ipc
+import threading
 import sys
 import errno
 import timeit
@@ -17,30 +18,36 @@ def write_msg(list_cmd,mq):
 
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
-    keyr = 262144
-    keyw = 262145
-    keyw1=362146
-    keyw2=462146
+    key_c_orig_r = 262144
+    key_c_orig_w = 262145
+    key_c_retx_r=362146
+    key_c_retx_w=462146
     keyr1=562146
     keyr2=662146
     try:
-        mqr=sysv_ipc.MessageQueue(keyr, sysv_ipc.IPC_CREAT, max_message_size = 15000)
+        mq_orig_r=sysv_ipc.MessageQueue(key_c_orig_w, sysv_ipc.IPC_CREAT, max_message_size = 15000)
     except:
-        print ("ERROR: Queue not created")
-    try:
-        mqw=sysv_ipc.MessageQueue(keyw, sysv_ipc.IPC_CREAT, max_message_size = 15000)
-    except:
-        print ("ERROR: Queue not created")
-    cmd=["CREATE_CONN","10.10.1.1","443",url]
+        print ("ERROR: mq_orig_r Queue not created")
+#    try:
+ #       mq_orig_w=sysv_ipc.MessageQueue(keyw_c_orig_r, sysv_ipc.IPC_CREAT, max_message_size = 15000)
+  #  except:
+   #     print ("ERROR: mq_orig_w Queue not created")
+#    cmd=["CREATE_CONN","10.10.1.1","443",url]
     cmd_cpp=""
-    thread1=threading.Thread(target=write_msg,args=(cmd,mqw))
-    thread1.start()
-    thread1.join()
+    #thread1=threading.Thread(target=write_msg,args=([url],mqw))
+    #thread1.start()
+    #thread1.join()
+    #print("Message/url sent\n")
     #process1= Process(target=write_msg, args=(cmd,mqw))
     #process1.start()
     #process1.join()
     #os.system("sudo /dev/SQUAD/src/out/Test/quic_persistent_client --disable-certificate-verification 2>&1 > quic_out.txt &")
-    message=mqr.receive()
+    message='start'
+    m=['start']
+    while m[0] != b'end':
+            (message,prior)=mq_orig_r.receive()
+            m=message.split(b':')
+            print("Reply:{}\n".format(message))
     mpd_file = url.split('/')[-1]
     mpd_file=os.path.abspath(mpd_file)
     try:
