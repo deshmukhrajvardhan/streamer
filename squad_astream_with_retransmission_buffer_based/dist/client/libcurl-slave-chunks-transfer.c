@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 /* ipc */
+
 #include <iostream>
 #include <future>
 #include <sys/types.h>
@@ -92,6 +93,7 @@ int WriteMsg(string myfifow, int cmd, key_t key){
   }
   else if (cmd==2) {
      string msg="end:";
+     msg+=myfifow+":";
      strcpy(message.mesg_text,msg.c_str());
   }
   else {
@@ -152,12 +154,15 @@ WriteMemoryCallback2(void *contents, size_t size, size_t nmemb, void *userp)
   //  printf("\n C2:ChunkSize:%d",realsize);//handleChange.chunk_size);
   handleChange.retx_chunk_size+= realsize;
 
-  //  if(handleChange.chunk_size>=MAX_CHUNK_SIZE) {
-  //    printf("\n ChunkSize:%d",handleChange.chunk_size);
-  //    handleChange.chunk_size=0;
-  //  }
-
-  //  handleChange.chunk_size+= realsize;
+  // To get chunks of approx 15000 and send them via ipc c_w_orig 
+  if(handleChange.retx_chunk_size>=MAX_CHUNK_SIZE) {
+    string retx_chunk_size = std::to_string(handleChange.retx_chunk_size);
+    key_t key_c_retx_w=462146;
+    int read_exec = 1;
+    auto future = std::async(WriteMsg, retx_chunk_size, read_exec, key_c_retx_w);
+    auto write_ret = future.get();
+    handleChange.retx_chunk_size=0;
+  }
 
 
   return realsize;
@@ -399,30 +404,46 @@ int main(){
           printf("\nStill_running:%d",handleChange.still_running);
           handleChange.change=1; //count segments and get streamID
        
+	  // Get Content-length from header
+	  if(!res) {
+	    handleChange.content_len = cl;
+	    printf("--------------Size: %.0f---------------\n", handleChange.content_len);
+	  }
 	  
-
+	  // send content-length at the end of segment download
 	  if(handleChange.still_running==0) {
-	    printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%d",handleChange.still_running,handleChange.seg_num,handleChange.chunk_size);
+	    printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,handleChange.seg_num,handleChange.chunk_size);
 	    //
-	    string orig_chunk_size = "end";
 	    key_t key_c_orig_w = 262145;
-	    int read_exec = 2;
-	    auto future = std::async(WriteMsg, orig_chunk_size, read_exec, key_c_orig_w);
+	    string last_chunk_size = std::to_string(handleChange.chunk_size);
+	    int read_exec = 1; //end of segment
+	    auto future = std::async(WriteMsg, last_chunk_size, read_exec, key_c_orig_w);
 	    auto write_ret = future.get();
+	    //
+	    string orig_chunk_size = std::to_string(handleChange.content_len);
+	    read_exec = 2; //end of segment
+	    future = std::async(WriteMsg, orig_chunk_size, read_exec, key_c_orig_w);
+	    write_ret = future.get();
 	    handleChange.chunk_size=0;
 
-	    //
-	    handleChange.chunk_size=0;
 	  }
 	  else{
 	    printf("\nMain2:Write Still_running:%d,Segment num:%d,Size:%d",handleChange.still_running,handleChange.seg_num,handleChange.retx_chunk_size);
+	    //
+	    key_t key_c_retx_w=462146;
+	    string last_chunk_size = std::to_string(handleChange.retx_chunk_size);
+	    int read_exec = 1; //end of segment
+	    auto future = std::async(WriteMsg, last_chunk_size, read_exec, key_c_retx_w);
+	    auto write_ret = future.get();
+	    
+	    //
+	    string retx_chunk_size = std::to_string(handleChange.content_len);
+	    read_exec = 2; //end of segment
+	    future = std::async(WriteMsg, retx_chunk_size, read_exec, key_c_retx_w);
+	    write_ret = future.get();
 	    handleChange.retx_chunk_size=0;
 	  }
-          if(!res) {
-	    handleChange.content_len = cl;
-            printf("--------------Size: %.0f---------------\n", handleChange.content_len);
-          }
-
+          
         }
         handleChange.prev_run=handleChange.still_running;
         break;

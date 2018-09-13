@@ -28,26 +28,47 @@ def get_mpd(url):
         mq_orig_r=sysv_ipc.MessageQueue(key_c_orig_w, sysv_ipc.IPC_CREAT, max_message_size = 15000)
     except:
         print ("ERROR: mq_orig_r Queue not created")
-#    try:
- #       mq_orig_w=sysv_ipc.MessageQueue(keyw_c_orig_r, sysv_ipc.IPC_CREAT, max_message_size = 15000)
-  #  except:
-   #     print ("ERROR: mq_orig_w Queue not created")
-#    cmd=["CREATE_CONN","10.10.1.1","443",url]
-    cmd_cpp=""
-    #thread1=threading.Thread(target=write_msg,args=([url],mqw))
-    #thread1.start()
-    #thread1.join()
-    #print("Message/url sent\n")
-    #process1= Process(target=write_msg, args=(cmd,mqw))
-    #process1.start()
-    #process1.join()
-    #os.system("sudo /dev/SQUAD/src/out/Test/quic_persistent_client --disable-certificate-verification 2>&1 > quic_out.txt &")
+
+    try:
+        mq_retx_r=sysv_ipc.MessageQueue(key_c_retx_w, sysv_ipc.IPC_CREAT, max_message_size = 15000)
+    except:
+        print ("ERROR: mq_orig_r Queue not created")
+
+    message='start'
+    m=['start']
+    total_chunk_sizes=[]
+    chunk_sizes=[]
+    while m[0] != b'end':
+        (message,prior)=mq_orig_r.receive()
+        m=message.split(b':')
+#        print("Reply:{}, content-length:{}\n".format(message,m[1]))
+        chunk_sizes.append(float(m[1]))
+
+    content_length = chunk_sizes.pop()
+    print("P1 sum:{}, content_length:{}".format(sum(chunk_sizes),content_length))
+  #  if sum(chunk_sizes) == content_length:
+  #      total_chunk_sizes.append(chunk_sizes)
+  #  else:
+  #      print("Not all chunks in pipe 1")
+
+    chunk_sizes=[]
     message='start'
     m=['start']
     while m[0] != b'end':
-            (message,prior)=mq_orig_r.receive()
-            m=message.split(b':')
-            print("Reply:{}\n".format(message))
+        (message,prior)=mq_retx_r.receive()
+        m=message.split(b':')
+ #       print("retx-Reply:{}, content-length:{}\n".format(message,m[1]))
+        chunk_sizes.append(float(m[1]))
+
+    content_length = chunk_sizes.pop()
+    print("P2 sum:{}, content_length:{}".format(sum(chunk_sizes),content_length))
+
+#    if sum(chunk_sizes) == content_length:
+#        total_chunk_sizes.append(chunk_sizes)
+#    else:
+#        print("Not all chunks in pipe 2")
+
+
     mpd_file = url.split('/')[-1]
     mpd_file=os.path.abspath(mpd_file)
     try:
