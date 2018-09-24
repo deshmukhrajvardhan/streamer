@@ -42,19 +42,24 @@ string ReadMsg(char *myfifor,char *myfifow, bool stream, key_t key){
   while (numbytes==0){
     //    numbytes=msgrcv(msgid, &msg, sizeof(msg.mesg_text),1,1);
     numbytes=msgrcv(msgid, &msg, sizeof(msg.mesg_text),1,IPC_NOWAIT);
-    std::cout<<"numb:"<<numbytes<<std::endl;
+    //    std::cout<<"numb:"<<numbytes<<std::endl;
   }
   if (numbytes==-1) {
     //    std::cout<<"IPC_NOWAIT";
-    cmd = "non-block";
+    cmd = "-1";
     return cmd;
     }
   string message(msg.mesg_text, numbytes);
-  std::cout<<"Received:"<< message<<"\t"<<std::endl;
+  //  std::cout<<"Received:"<< message<<"\t"<<std::endl;
   if (message.compare("QUIT")==0){
     std::cout << "QUIT" << std::endl;
+    exit(1);
   }
-
+  else {
+    //    std::cout<<"Received:"<< message<<"\t"<<std::endl;
+    return message;
+  }
+  /*
   else if (message.compare("CREATE_CONN")==0){
     cmd="conn";
     return cmd;
@@ -74,10 +79,10 @@ string ReadMsg(char *myfifor,char *myfifow, bool stream, key_t key){
     return message;
 
     //unlink(myfifor);
-  }
+    }*/
 
   //unlink(myfifo);
-  return "done";
+  //return "done";
 
 }
 
@@ -285,12 +290,25 @@ int main(){
   bool stream_send=false;
   auto future_orig_r = std::async(ReadMsg, myfifor_orig,myfifow_orig, stream_send, key_c_orig_r);
   auto read_ret_orig = future_orig_r.get();
+  if (read_ret_orig.compare("-1")!=0) {
+    std::cout<<"\nurl:"<<read_ret_orig<<std::endl;
+    //add url to easy handle and multi handle
+    chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
+    chunk.size = 0;    /* no data at this point */
+    char url[1024];
+
+    snprintf(url, 1024,read_ret_orig.c_str());
+  }
   char *myfifor_retx = (char*)"./fifopipe_retx";
   char *myfifow_retx = (char*)"/tmp/fifowpipe_retx";
   key_t key_c_retx_r=362146;
   // bool stream_send=false;
   auto future_retx_r = std::async(ReadMsg, myfifor_retx,myfifow_retx, stream_send, key_c_retx_r);
   auto read_ret_retx = future_retx_r.get();
+  if (read_ret_retx.compare("-1")!=0) {
+    std::cout<<"\nRetx_url:"<<read_ret_retx<<std::endl;
+    //add url to easy handle and multi handle
+  }
   num_reads--;
   }
   return 0;
