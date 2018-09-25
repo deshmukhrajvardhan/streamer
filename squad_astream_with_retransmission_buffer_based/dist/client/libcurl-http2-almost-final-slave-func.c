@@ -447,6 +447,10 @@ int main(){
 	  if(!res) {
 	    handleChange.content_len = cl;
 	    printf("--------------Size: %.0f---------------\n", handleChange.content_len);
+	    if(cl==-1){
+	      handleChange.prev_run=handleChange.still_running;
+	      break;
+	    }
 	  }
 	  
 	  // send content-length at the end of segment download
@@ -467,6 +471,9 @@ int main(){
 	    std::cout<<"\nclearing orig_mem\n";	            
 	    free(chunk.memory);  // essentially data from parallel streams is stored in memory             
 	    current_handle=NO_HANDLE;
+	    if(num_current_orig_urls>0) {
+	      num_current_orig_urls-=1;
+	    }
 	  }
 	  else {
 	    printf("\nMain2:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,handleChange.seg_num,handleChange.retx_chunk_size);
@@ -485,6 +492,9 @@ int main(){
 	    std::cout<<"\nclearing retx_mem\n";
 	    free(retx_chunk.memory);  // and cleared when we move to next set of parallel stream downloads
 	    current_handle = NO_HANDLE;
+	    if(num_current_retx_urls>0) {
+	      num_current_retx_urls-=1;
+	    }
 	  }
           
         }
