@@ -23,6 +23,7 @@
 #define MAX_CHUNK_SIZE 15000
 #define ORIG_EASY 0
 #define RETX_EASY 1
+#define NO_HANDLE 2
 /* IPC API's */
 
 using std::string;
@@ -220,9 +221,6 @@ int main(){
   int http_status_code;
   const char *szUrl;
 
-  struct MemoryStruct chunk;
-  struct MemoryStruct retx_chunk;
-
   // Create multi handle with multiplex over a single connection                                   
   CURLM *multi_handle = curl_multi_init();
   curl_multi_setopt(multi_handle, CURLMOPT_MAX_HOST_CONNECTIONS, (long) 1L);
@@ -250,19 +248,20 @@ int main(){
   FD_ZERO(&fdwrite);
   FD_ZERO(&fdexcep);
   
+  struct MemoryStruct chunk;
+  struct MemoryStruct retx_chunk;	
+
   /* get file descriptors from the transfers */
   mc = curl_multi_fdset(multi_handle, &fdread, &fdwrite, &fdexcep, &maxfd);
   int NUM_HANDLES = 2;
   CURL *easy[NUM_HANDLES];
 
-  easy[ORIG_EASY] = curl_easy_init(); //easy_handle is sticky
-  easy[RETX_EASY] = curl_easy_init(); //easy_handle is sticky
-
   handleChange.seg_num=0; // count total number of segments
   handleChange.chunk_size=0; // get chunks of almost fixed size 
   
-  int num_reads=300;
-
+  int num_current_orig_urls = 0;
+  int num_current_retx_urls = 0;
+  int current_handle = NO_HANDLE;
   /* we start some action by calling perform right away */
   handleChange.still_running=0;
   handleChange.retx_chunk_size=0;
@@ -270,7 +269,7 @@ int main(){
   handleChange.change=1;
 
   //    curl_multi_perform(multi_handle, &handleChange.still_running);
-  handleChange.prev_run=handleChange.still_running;
+  handleChange.prev_run=1;//handleChange.still_running;
 
   int cycle=0;
   double cl; //header len, struct didn't work as it changes in write callback
@@ -302,7 +301,7 @@ int main(){
 	char url[1024];
 
 	snprintf(url, 1024, "%s", read_ret_orig.c_str());
-    //    easy[ORIG_EASY] = curl_easy_init(); //easy_handle is sticky
+        easy[ORIG_EASY] = curl_easy_init(); //easy_handle is sticky
 	curl_easy_setopt(easy[ORIG_EASY], CURLOPT_VERBOSE, 1L);
 	printf("\nurl:%s",url);
 	curl_easy_setopt(easy[ORIG_EASY], CURLOPT_URL, url);
@@ -313,6 +312,7 @@ int main(){
 	curl_easy_setopt(easy[ORIG_EASY], CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
 	curl_easy_setopt(easy[ORIG_EASY], CURLOPT_WRITEDATA, (void *)&chunk);
 	curl_multi_add_handle(multi_handle, easy[ORIG_EASY]);
+	num_current_orig_urls+=1;
       }
       auto future_retx_r = std::async(ReadMsg, myfifor_retx,myfifow_retx, stream_send, key_c_retx_r);
       auto read_ret_retx = future_retx_r.get();
@@ -324,6 +324,9 @@ int main(){
 	char retx_url[1024];
 
 	snprintf(retx_url, 1024, "%s", read_ret_retx.c_str());
+	//easy[ORIG_EASY] = curl_easy_init(); //easy_handle is sticky
+	easy[RETX_EASY] = curl_easy_init(); //easy_handle is sticky
+
 	curl_easy_setopt(easy[RETX_EASY], CURLOPT_VERBOSE, 1L);
 	printf("\nRetx_url:%s",retx_url);
 	curl_easy_setopt(easy[RETX_EASY], CURLOPT_URL, retx_url);
@@ -338,6 +341,7 @@ int main(){
 	/* we pass our 'chunk' struct to the callback function */
 	curl_easy_setopt(easy[RETX_EASY], CURLOPT_WRITEDATA, (void *)&retx_chunk);
 	curl_multi_add_handle(multi_handle, easy[RETX_EASY]);
+	num_current_retx_urls+=1;
       }
       //IPC read complete
       struct timeval timeout;
@@ -410,12 +414,20 @@ int main(){
         curl_multi_perform(multi_handle, &handleChange.still_running);
 
 	//        res = curl_easy_getinfo(easy[(NUM_HANDLES-1)-handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
-        res = curl_easy_getinfo(easy[handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
+	if(num_current_orig_urls){
+	  res = curl_easy_getinfo(easy[ORIG_EASY], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
+	  current_handle=ORIG_EASY;
+	}
+	if(num_current_retx_urls) {
+	  res = curl_easy_getinfo(easy[RETX_EASY], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
+	  current_handle=RETX_EASY;
+	}
+	//std::cout<<"\n still_running"<<handleChange.still_running<<std::endl;
 	//char *url = NULL;
 	//curl_easy_getinfo(easy[handleChange.still_running], CURLINFO_EFFECTIVE_URL, &url);
 	
 	//to get info from the correct easy handle
-	if (res) {// if no reply 
+	/*if (res) {// if no reply 
 	  if (handleChange.still_running==1){
 	    handleChange.still_running=0;
 	    res = curl_easy_getinfo(easy[handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
@@ -424,9 +436,9 @@ int main(){
 	    handleChange.still_running=1;
 	    res = curl_easy_getinfo(easy[handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
 	  }
-	}
+	}*/
         // individual response end                                                                 
-        if(handleChange.prev_run!=handleChange.still_running) {
+        if((handleChange.prev_run!=handleChange.still_running)&&(current_handle!=NO_HANDLE)) {
           printf("\nStill_running:%d",handleChange.still_running);
           handleChange.change=1; //count segments and get streamID
 	  //	  char *url = NULL;
@@ -438,7 +450,7 @@ int main(){
 	  }
 	  
 	  // send content-length at the end of segment download
-	  if(handleChange.still_running==0) {
+	  if(num_current_orig_urls>0) {
 	  //if(read_ret_orig.compare(url)==0) {
 	    printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,handleChange.seg_num,handleChange.chunk_size);
 	    //
@@ -452,8 +464,9 @@ int main(){
 	    future = std::async(WriteMsg, orig_chunk_size, read_exec, key_c_orig_w);
 	    write_ret = future.get();
 	    handleChange.chunk_size=0;
-	            
+	    std::cout<<"\nclearing orig_mem\n";	            
 	    free(chunk.memory);  // essentially data from parallel streams is stored in memory             
+	    current_handle=NO_HANDLE;
 	  }
 	  else {
 	    printf("\nMain2:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,handleChange.seg_num,handleChange.retx_chunk_size);
@@ -469,8 +482,9 @@ int main(){
 	    future = std::async(WriteMsg, retx_chunk_size, read_exec, key_c_retx_w);
 	    write_ret = future.get();
 	    handleChange.retx_chunk_size=0;
-
-	    free(retx_chunk.memory);  // and cleared when we move to next set of parallel stream downloads       
+	    std::cout<<"\nclearing retx_mem\n";
+	    free(retx_chunk.memory);  // and cleared when we move to next set of parallel stream downloads
+	    current_handle = NO_HANDLE;
 	  }
           
         }
