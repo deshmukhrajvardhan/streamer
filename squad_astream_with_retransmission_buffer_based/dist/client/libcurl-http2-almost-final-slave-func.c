@@ -416,11 +416,13 @@ int main(){
 	//        res = curl_easy_getinfo(easy[(NUM_HANDLES-1)-handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
 	if(num_current_orig_urls){
 	  res = curl_easy_getinfo(easy[ORIG_EASY], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
-	  current_handle=ORIG_EASY;
+	  current_handle = ORIG_EASY;
+	  //std::cout<<"\nNum_current_urls:"<<num_current_orig_urls<<"\tHandle:"<<current_handle<<"\tStill_running:"<<handleChange.still_running<<std::endl;
 	}
-	if(num_current_retx_urls) {
+	if(num_current_retx_urls) {//>0 && num_current_orig_urls<1) {
 	  res = curl_easy_getinfo(easy[RETX_EASY], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
-	  current_handle=RETX_EASY;
+	  current_handle = RETX_EASY;
+	  //std::cout<<"\nNum_Retx_current_urls:"<<num_current_retx_urls<<"\tHandle:"<<current_handle<<"\tStill_running:"<<handleChange.still_running<<std::endl;
 	}
 	//std::cout<<"\n still_running"<<handleChange.still_running<<std::endl;
 	//char *url = NULL;
@@ -454,7 +456,7 @@ int main(){
 	  }
 	  
 	  // send content-length at the end of segment download
-	  if(num_current_orig_urls>0) {
+	  if(current_handle == ORIG_EASY) {//if(num_current_orig_urls>0) {
 	  //if(read_ret_orig.compare(url)==0) {
 	    printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,handleChange.seg_num,handleChange.chunk_size);
 	    //
@@ -469,7 +471,10 @@ int main(){
 	    write_ret = future.get();
 	    handleChange.chunk_size=0;
 	    std::cout<<"\nclearing orig_mem\n";	            
-	    free(chunk.memory);  // essentially data from parallel streams is stored in memory             
+	    free(chunk.memory);  // essentially data from parallel streams is stored in memory     // tries after 1st weren't working        
+	    chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
+	    chunk.size = 0;    /* no data at this point */
+
 	    current_handle=NO_HANDLE;
 	    if(num_current_orig_urls>0) {
 	      num_current_orig_urls-=1;
@@ -491,6 +496,10 @@ int main(){
 	    handleChange.retx_chunk_size=0;
 	    std::cout<<"\nclearing retx_mem\n";
 	    free(retx_chunk.memory);  // and cleared when we move to next set of parallel stream downloads
+// tries after 1st weren't working        
+	    retx_chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
+	    retx_chunk.size = 0;    /* no data at this point */
+
 	    current_handle = NO_HANDLE;
 	    if(num_current_retx_urls>0) {
 	      num_current_retx_urls-=1;
