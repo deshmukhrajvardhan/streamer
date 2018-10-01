@@ -8,6 +8,7 @@ import read_mpd
 import urllib
 import random
 import os
+import time
 
 
 def write_msg(list_cmd, mq):
@@ -52,14 +53,8 @@ def get_mpd(url1,url2):
         thread_retx = threading.Thread(target=write_msg, args=(cmd2, mq_retx_w))
 
         thread_orig.start()
+#        time.sleep(1)
         thread_retx.start()
-        #    try:
-        #              mqr1.remove()
-        #             mqw1.remove()
-        #      except sysv_ipc.ExistentialError:
-        #           print ("Existen.. error")
-        # process3.join()
-  #      thread_orig.join()
         thread_retx.join()
     #        return mpd_file
     else:

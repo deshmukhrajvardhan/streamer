@@ -213,7 +213,7 @@ int main(){
     fprintf(stdout, "This libcurl does NOT have HTTP/2 support!\n");
   }
 
-  CURLcode res;
+  CURLcode res_orig, res_retx;
   CURL *eh=NULL;
   CURLMsg *msg=NULL;
   //CURLcode return_code=0;
@@ -271,9 +271,10 @@ int main(){
   //    curl_multi_perform(multi_handle, &handleChange.still_running);
   handleChange.prev_run=1;//handleChange.still_running;
 
-  int cycle=0;
-  double cl; //header len, struct didn't work as it changes in write callback
-    
+  int cycle = 0;
+  double cl_orig = -1; //header len, struct didn't work as it changes in write callback
+  double cl_retx = -1;
+  double content_length=0;
   // write ipc
   key_t key_c_orig_w = 262145;
   key_t key_c_retx_w=462146;
@@ -288,6 +289,12 @@ int main(){
   char *myfifow_retx = (char*)"/tmp/fifowpipe_retx";
   key_t key_c_retx_r=362146;
      
+  //malloc before
+  chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
+  chunk.size = 0;    /* no data at this point */
+  retx_chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
+  retx_chunk.size = 0;    /* no data at this point */
+
   // Get url from py master and download files from server in non blocking manner
     do {
       // std::cout<<"\nIn the loop"<<num_reads--<<"\n";
@@ -296,8 +303,8 @@ int main(){
       if (read_ret_orig.compare("-1")!=0) {
 	//std::cout<<"\nurl:"<<read_ret_orig<<std::endl;
 	//add url to easy handle and multi handle
-	chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
-	chunk.size = 0;    /* no data at this point */
+	//chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
+	//chunk.size = 0;    /* no data at this point */
 	char url[1024];
 
 	snprintf(url, 1024, "%s", read_ret_orig.c_str());
@@ -319,8 +326,8 @@ int main(){
       if (read_ret_retx.compare("-1")!=0) {
 	//std::cout<<"\nRetx_url:"<<read_ret_retx<<std::endl;
 	//add url to easy handle and multi handle
-	retx_chunk.memory = (char *)malloc(1);  /* will be grown as needed by the realloc above */
-	retx_chunk.size = 0;    /* no data at this point */
+	//	retx_chunk.memory = (char *)malloc(1);  /* will be grown as needed by the realloc above */
+	//retx_chunk.size = 0;    /* no data at this point */
 	char retx_url[1024];
 
 	snprintf(retx_url, 1024, "%s", read_ret_retx.c_str());
@@ -414,31 +421,22 @@ int main(){
         curl_multi_perform(multi_handle, &handleChange.still_running);
 
 	//        res = curl_easy_getinfo(easy[(NUM_HANDLES-1)-handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
-	if(num_current_orig_urls){
-	  res = curl_easy_getinfo(easy[ORIG_EASY], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
+	if(num_current_orig_urls>0 ) {//&& cl==-1){
+	  res_orig = curl_easy_getinfo(easy[ORIG_EASY], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl_orig);
+	  //if(cl!=-1) {
+	  //content_length=cl;
+	  //}
 	  current_handle = ORIG_EASY;
 	  //std::cout<<"\nNum_current_urls:"<<num_current_orig_urls<<"\tHandle:"<<current_handle<<"\tStill_running:"<<handleChange.still_running<<std::endl;
 	}
-	if(num_current_retx_urls) {//>0 && num_current_orig_urls<1) {
-	  res = curl_easy_getinfo(easy[RETX_EASY], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
+	if(num_current_retx_urls>0 ) {//&& cl==-1) {//>0 && num_current_orig_urls<1) {
+	  res_retx = curl_easy_getinfo(easy[RETX_EASY], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl_retx);
+	  //if(cl!=-1) {
+	  //content_length=cl;
+	  //}
 	  current_handle = RETX_EASY;
 	  //std::cout<<"\nNum_Retx_current_urls:"<<num_current_retx_urls<<"\tHandle:"<<current_handle<<"\tStill_running:"<<handleChange.still_running<<std::endl;
 	}
-	//std::cout<<"\n still_running"<<handleChange.still_running<<std::endl;
-	//char *url = NULL;
-	//curl_easy_getinfo(easy[handleChange.still_running], CURLINFO_EFFECTIVE_URL, &url);
-	
-	//to get info from the correct easy handle
-	/*if (res) {// if no reply 
-	  if (handleChange.still_running==1){
-	    handleChange.still_running=0;
-	    res = curl_easy_getinfo(easy[handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
-	  }
-	  else {
-	    handleChange.still_running=1;
-	    res = curl_easy_getinfo(easy[handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
-	  }
-	}*/
         // individual response end                                                                 
         if((handleChange.prev_run!=handleChange.still_running)&&(current_handle!=NO_HANDLE)) {
           printf("\nStill_running:%d",handleChange.still_running);
@@ -446,15 +444,24 @@ int main(){
 	  //	  char *url = NULL;
 	  //curl_easy_getinfo(easy[handleChange.still_running], CURLINFO_EFFECTIVE_URL, &url);
 	  // Get Content-length from header
-	  if(!res) {
-	    handleChange.content_len = cl;
-	    printf("--------------Size: %.0f---------------\n", handleChange.content_len);
-	    if(cl==-1){
+	  if(!res_orig) {
+	    handleChange.content_len = cl_orig;
+	    printf("\n--------------Orig_Size: %.0f---------------\n", handleChange.content_len);
+
+	    if(cl_orig==-1){
 	      handleChange.prev_run=handleChange.still_running;
 	      break;
 	    }
 	  }
-	  
+	  if(!res_retx) {
+	    handleChange.content_len = cl_retx;
+	    printf("\n--------------Retx_Size: %.0f---------------\n", handleChange.content_len);
+
+	    if(cl_retx==-1){
+	      handleChange.prev_run=handleChange.still_running;
+	      break;
+	    }
+	  }
 	  // send content-length at the end of segment download
 	  if(current_handle == ORIG_EASY) {//if(num_current_orig_urls>0) {
 	  //if(read_ret_orig.compare(url)==0) {
@@ -465,7 +472,7 @@ int main(){
 	    auto future = std::async(WriteMsg, last_chunk_size, read_exec, key_c_orig_w);
 	    auto write_ret = future.get();
 	    //
-	    string orig_chunk_size = std::to_string(handleChange.content_len);
+	    string orig_chunk_size = std::to_string(cl_orig);//handleChange.content_len);
 	    read_exec = 2; //end of segment
 	    future = std::async(WriteMsg, orig_chunk_size, read_exec, key_c_orig_w);
 	    write_ret = future.get();
@@ -474,7 +481,8 @@ int main(){
 	    free(chunk.memory);  // essentially data from parallel streams is stored in memory     // tries after 1st weren't working        
 	    chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
 	    chunk.size = 0;    /* no data at this point */
-
+	    content_length=0;
+	    //cl=-1;
 	    current_handle=NO_HANDLE;
 	    if(num_current_orig_urls>0) {
 	      num_current_orig_urls-=1;
@@ -489,7 +497,7 @@ int main(){
 	    auto write_ret = future.get();
 	    
 	    //
-	    string retx_chunk_size = std::to_string(handleChange.content_len);
+	    string retx_chunk_size = std::to_string(cl_retx);//handleChange.content_len);
 	    read_exec = 2; //end of segment
 	    future = std::async(WriteMsg, retx_chunk_size, read_exec, key_c_retx_w);
 	    write_ret = future.get();
@@ -499,7 +507,8 @@ int main(){
 // tries after 1st weren't working        
 	    retx_chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
 	    retx_chunk.size = 0;    /* no data at this point */
-
+	    content_length=0;
+	    //cl=-1;
 	    current_handle = NO_HANDLE;
 	    if(num_current_retx_urls>0) {
 	      num_current_retx_urls-=1;
