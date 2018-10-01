@@ -130,10 +130,7 @@ WriteMemoryCallback2(void *contents, size_t size, size_t nmemb, void *userp)
   memcpy(&(mem->memory[mem->size]), contents, realsize);
   mem->size += realsize;
   mem->memory[mem->size] = 0;
-  
-  
-  //  handleChange.chunk_size+= realsize;
-
+   
   if(handleChange.change) {
     printf("\nCallback2:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,++handleChange.seg_num,handleChange.retx_chunk_size);//,handleChange.content_len);,content_length:%.0f
     //    printf("\n ChunkSize:%d",realsize);//handleChange.chunk_size);
@@ -176,10 +173,9 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
   mem->memory[mem->size] = 0;
   
   if(handleChange.change) {
-    printf("\nCallback1:Write Still_running:%d,Segment num:%d, Size:%zu",handleChange.still_running,++handleChange.seg_num,handleChange.chunk_size);//,handleChange.content_len);,content_length:%.0f
+    printf("\nCallback1:Write Still_running:%d,Segment num:%d, Size:%zu",handleChange.still_running,++handleChange.seg_num,handleChange.chunk_size);
     //    printf("\n ChunkSize:%d",realsize);//handleChange.chunk_size);
     handleChange.change=0;
-    //    handleChange.chunk_size=0;
   }
   //printf("\n C1:ChunkSize:%d",realsize);//handleChange.chunk_size);
   handleChange.chunk_size+= realsize;
@@ -193,13 +189,6 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
     auto write_ret = future.get();
     handleChange.chunk_size=0;
   }
-  //  if(handleChange.chunk_size>=MAX_CHUNK_SIZE) {
-  //    printf("\n ChunkSize:%d",handleChange.chunk_size);
-  //    handleChange.chunk_size=0;
-  //  }
-
-  //  handleChange.chunk_size+= realsize;
-
 
   return realsize;
 }
@@ -216,7 +205,6 @@ int main(){
   CURLcode res_orig, res_retx;
   CURL *eh=NULL;
   CURLMsg *msg=NULL;
-  //CURLcode return_code=0;
   int i=0, msgs_left=0;
   int http_status_code;
   const char *szUrl;
@@ -274,7 +262,7 @@ int main(){
   int cycle = 0;
   double cl_orig = -1; //header len, struct didn't work as it changes in write callback
   double cl_retx = -1;
-  double content_length=0;
+
   // write ipc
   key_t key_c_orig_w = 262145;
   key_t key_c_retx_w=462146;
@@ -284,6 +272,7 @@ int main(){
   char *myfifow_orig = (char*)"/tmp/fifowpipe_orig";
   key_t key_c_orig_r=262144;
   bool stream_send=false;
+
   // read retx_url from ipc
   char *myfifor_retx = (char*)"./fifopipe_retx";
   char *myfifow_retx = (char*)"/tmp/fifowpipe_retx";
@@ -303,8 +292,6 @@ int main(){
       if (read_ret_orig.compare("-1")!=0) {
 	//std::cout<<"\nurl:"<<read_ret_orig<<std::endl;
 	//add url to easy handle and multi handle
-	//chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
-	//chunk.size = 0;    /* no data at this point */
 	char url[1024];
 
 	snprintf(url, 1024, "%s", read_ret_orig.c_str());
@@ -326,12 +313,9 @@ int main(){
       if (read_ret_retx.compare("-1")!=0) {
 	//std::cout<<"\nRetx_url:"<<read_ret_retx<<std::endl;
 	//add url to easy handle and multi handle
-	//	retx_chunk.memory = (char *)malloc(1);  /* will be grown as needed by the realloc above */
-	//retx_chunk.size = 0;    /* no data at this point */
 	char retx_url[1024];
 
 	snprintf(retx_url, 1024, "%s", read_ret_retx.c_str());
-	//easy[ORIG_EASY] = curl_easy_init(); //easy_handle is sticky
 	easy[RETX_EASY] = curl_easy_init(); //easy_handle is sticky
 
 	curl_easy_setopt(easy[RETX_EASY], CURLOPT_VERBOSE, 1L);
@@ -386,7 +370,6 @@ int main(){
         fprintf(stderr, "curl_multi_fdset() failed, code %d.\n", mc);
         break;
       }
-      //fprintf(stderr, "curl_multi_fdset() failed, code %d.\n", mc);                               
 
       /* On success the value of maxfd is guaranteed to be >= -1. We call                           
        select(maxfd + 1, ...); specially in case of (maxfd == -1) there are                         
@@ -420,29 +403,20 @@ int main(){
         /* timeout or readable/writable sockets */
         curl_multi_perform(multi_handle, &handleChange.still_running);
 
-	//        res = curl_easy_getinfo(easy[(NUM_HANDLES-1)-handleChange.still_running], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
-	if(num_current_orig_urls>0 ) {//&& cl==-1){
+	// Get Content-length from header
+	if(num_current_orig_urls>0 ) {
 	  res_orig = curl_easy_getinfo(easy[ORIG_EASY], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl_orig);
-	  //if(cl!=-1) {
-	  //content_length=cl;
-	  //}
 	  current_handle = ORIG_EASY;
-	  //std::cout<<"\nNum_current_urls:"<<num_current_orig_urls<<"\tHandle:"<<current_handle<<"\tStill_running:"<<handleChange.still_running<<std::endl;
 	}
-	if(num_current_retx_urls>0 ) {//&& cl==-1) {//>0 && num_current_orig_urls<1) {
+	if(num_current_retx_urls>0 ) {
 	  res_retx = curl_easy_getinfo(easy[RETX_EASY], CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl_retx);
-	  //if(cl!=-1) {
-	  //content_length=cl;
-	  //}
 	  current_handle = RETX_EASY;
-	  //std::cout<<"\nNum_Retx_current_urls:"<<num_current_retx_urls<<"\tHandle:"<<current_handle<<"\tStill_running:"<<handleChange.still_running<<std::endl;
 	}
         // individual response end                                                                 
         if((handleChange.prev_run!=handleChange.still_running)&&(current_handle!=NO_HANDLE)) {
           printf("\nStill_running:%d",handleChange.still_running);
           handleChange.change=1; //count segments and get streamID
-	  //	  char *url = NULL;
-	  //curl_easy_getinfo(easy[handleChange.still_running], CURLINFO_EFFECTIVE_URL, &url);
+
 	  // Get Content-length from header
 	  if(!res_orig) {
 	    handleChange.content_len = cl_orig;
@@ -462,27 +436,26 @@ int main(){
 	      break;
 	    }
 	  }
+
 	  // send content-length at the end of segment download
-	  if(current_handle == ORIG_EASY) {//if(num_current_orig_urls>0) {
-	  //if(read_ret_orig.compare(url)==0) {
+	  if(current_handle == ORIG_EASY) {
 	    printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,handleChange.seg_num,handleChange.chunk_size);
-	    //
+	    
 	    string last_chunk_size = std::to_string(handleChange.chunk_size);
-	    int read_exec = 1; //end of segment
+	    int read_exec = 1; //last chunk
 	    auto future = std::async(WriteMsg, last_chunk_size, read_exec, key_c_orig_w);
 	    auto write_ret = future.get();
 	    //
-	    string orig_chunk_size = std::to_string(cl_orig);//handleChange.content_len);
+	    string orig_chunk_size = std::to_string(cl_orig);
 	    read_exec = 2; //end of segment
 	    future = std::async(WriteMsg, orig_chunk_size, read_exec, key_c_orig_w);
 	    write_ret = future.get();
 	    handleChange.chunk_size=0;
 	    std::cout<<"\nclearing orig_mem\n";	            
-	    free(chunk.memory);  // essentially data from parallel streams is stored in memory     // tries after 1st weren't working        
+	    free(chunk.memory); // and cleared when we move to next set of parallel stream downloads 
+	    // memory assigned before it is actually needed        
 	    chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
 	    chunk.size = 0;    /* no data at this point */
-	    content_length=0;
-	    //cl=-1;
 	    current_handle=NO_HANDLE;
 	    if(num_current_orig_urls>0) {
 	      num_current_orig_urls-=1;
@@ -492,23 +465,21 @@ int main(){
 	    printf("\nMain2:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,handleChange.seg_num,handleChange.retx_chunk_size);
 	    //
 	    string last_chunk_size = std::to_string(handleChange.retx_chunk_size);
-	    int read_exec = 1; //end of segment
+	    int read_exec = 1; //last chunk
 	    auto future = std::async(WriteMsg, last_chunk_size, read_exec, key_c_retx_w);
 	    auto write_ret = future.get();
 	    
 	    //
-	    string retx_chunk_size = std::to_string(cl_retx);//handleChange.content_len);
+	    string retx_chunk_size = std::to_string(cl_retx);
 	    read_exec = 2; //end of segment
 	    future = std::async(WriteMsg, retx_chunk_size, read_exec, key_c_retx_w);
 	    write_ret = future.get();
 	    handleChange.retx_chunk_size=0;
 	    std::cout<<"\nclearing retx_mem\n";
-	    free(retx_chunk.memory);  // and cleared when we move to next set of parallel stream downloads
-// tries after 1st weren't working        
+	    free(retx_chunk.memory); // and cleared when we move to next set of parallel stream downloads
+	    // memory assigned before it is actually needed  
 	    retx_chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
 	    retx_chunk.size = 0;    /* no data at this point */
-	    content_length=0;
-	    //cl=-1;
 	    current_handle = NO_HANDLE;
 	    if(num_current_retx_urls>0) {
 	      num_current_retx_urls-=1;
@@ -521,10 +492,7 @@ int main(){
       //      printf("\nin cycle:%d\n",cycle++);                                                  
       }
     } while(1);// run this forever//handleChange.still_running);
-        
-	//    free(chunk.memory);  // essentially data from parallel streams is stored in memory              
-	//    free(retx_chunk.memory);  // and cleared when we move to next set of parallel stream downloads       
-	
+        	
   //cleanups                                                                                      
   for(int i = 0; i < NUM_HANDLES; i++)
     curl_easy_cleanup(easy[i]);
