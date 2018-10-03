@@ -96,69 +96,49 @@ class SegmentDownloadStats:
 
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
-    keyr = 262144
-    keyw = 262145
-    keyw1=362146
-    keyw2=462146
-    keyr1=562146
-    keyr2=662146
+    global connection
     try:
-        mqr=sysv_ipc.MessageQueue(keyr, sysv_ipc.IPC_CREAT, max_message_size = 15000)
-    except:
-        print ("ERROR: Queue not created")
-    try:
-        mqw=sysv_ipc.MessageQueue(keyw, sysv_ipc.IPC_CREAT, max_message_size = 15000)
-    except:
-        print ("ERROR: Queue not created")
-    cmd=["CREATE_CONN","10.10.1.2","443",url]
-    cmd_cpp=""
-    #thread1=threading.Thread(target=write_msg,args=(cmd,mqw))
-    #thread1.start()
-    #thread1.join()
-    process1= Process(target=write_msg, args=(cmd,mqw))
-    process1.start()
-    process1.join()
-    #os.system("sudo /dev/SQUAD/src/out/Test/quic_persistent_client --disable-certificate-verification 2>&1 > quic_out.txt &")
-    message=mqr.receive()
+        ssl_context = hyper.tls.init_context()
+        ssl_context.load_cert_chain(certfile='/dev/SQUAD/cert.crt', keyfile='/dev/SQUAD/cert.key')
+        ssl_context.load_verify_locations(cafile='/dev/SQUAD/cert.pem')
+        parse_url = urllib.parse.urlparse(url)
+        connection = hyper.HTTP20Connection(parse_url.netloc, ssl_context=ssl_context,force_proto='h2', secure=True,port=443)
+        connection.network_buffer_size= int(DOWNLOAD_CHUNK)
+        http2_conn = connection.request('GET',parse_url.path)
+        mpd_conn=connection.get_response(http2_conn)
+    except hyper.http20.exceptions.HTTP20Error as error:
+        config_dash.LOG.error("Unable to download MPD file HTTP2 Error: %s" % error.code)
+        return None
+    except hyper.http20.exceptions.ConnectionError:
+        error_message = "URLError. Unable to reach Server.Check if Server active"
+        config_dash.LOG.error(error_message)
+        print (error_message)
+        return None
+    except (IOError,httplib.HTTPException) as e1:
+        message = "Unable to , file_identifierdownload MPD file HTTP Error."
+        config_dash.LOG.error(message)
+        return None 
+    #mpd_data = mpd_conn.read()
+    
+    #connection.close()
     mpd_file = url.split('/')[-1]
-    mpd_file=os.path.abspath(mpd_file)
-    try:
-        mqw1=sysv_ipc.MessageQueue(keyw1, sysv_ipc.IPC_CREAT, max_message_size = 15000)
-    except:
-        print ("ERROR: Queue not created")
-    try:
-        mqr1=sysv_ipc.MessageQueue(keyr1, sysv_ipc.IPC_CREAT, max_message_size = 15000)
-    except:
-        print ("ERROR: Queue not created")
-    try:
-        mqr1=sysv_ipc.MessageQueue(keyr1, sysv_ipc.IPC_CREAT, max_message_size = 15000)
-    except:
-        print ("ERROR: Queue not created")
-    parse_url = urllib.parse.urlparse(url)
-    cmd1=["CREATE_STREAM",parse_url.path,mpd_file]
-    print (parse_url.path)
-    print (mpd_file)
-    print (str(message[0],'utf-8', errors='ignore').split('\x00')[0])
-    if "CONN_CREATED" in (str(message[0],'utf-8', errors='ignore').split('\x00')[0]):
-        print ("CONNECTION ESTABLISHED")
-        #thread3=threading.Thread(target=write_msg,args=(cmd1,mqw1))
-        #thread3.start()
-        process3= Process(target=write_msg, args=(cmd1,mqw1))
-        process3.start()
-        while True:
-          message=mqr1.receive()
-          if "DONE" in str(message[0]):
-                   break
-        try:
-              mqr1.remove()
-              mqw1.remove()
-        except sysv_ipc.ExistentialError:
-              print ("Existen.. error")
-        process3.join()
-        #thread3.join()
-        return mpd_file
-    else:
-        return ("MPD error")
+    mpd_file_handle = open(mpd_file, 'wb')
+    chunk_start_time = timeit.default_timer()
+    segment_size=0
+    chunk_number=0
+    total_data_dl_time=0
+    mpd_data = mpd_conn.read(int(DOWNLOAD_CHUNK))
+    while mpd_data:
+        mpd_file_handle.write(mpd_data)
+        if (len(mpd_data) < DOWNLOAD_CHUNK):
+            break
+        
+        mpd_data = mpd_conn.read(int(DOWNLOAD_CHUNK))
+	
+    mpd_file_handle.close()
+    mpd_conn.close()
+    config_dash.LOG.info("Downloaded the MPD file {}".format(mpd_file))
+    return mpd_file
 
 def get_bandwidth(data, duration):
     """ Module to determine the bandwidth for a segment
@@ -185,56 +165,55 @@ def id_generator(id_size=6):
 def download_segment(segment_url, dash_folder):
     """ Module to download the segment """
 
-    parsed_uri = urllib.parse.urlparse(segment_url)
-    segment_path = '{uri.path}'.format(uri=parsed_uri)
-    while segment_path.startswith('/'):
-        segment_path = segment_path[1:]
+    #parsed_uri = urllib.parse.urlparse(segment_url)
+    #segment_path = '{uri.path}'.format(uri=parsed_uri)
+    #while segment_path.startswith('/'):
+    #    segment_path = segment_path[1:]
     seg_dw_object = SegmentDownloadStats()
-    config_dash.LOG.info("ABSPATH_SEG %s" %(os.path.abspath(os.path.join(dash_folder, os.path.basename(segment_path)))))
-    seg_dw_object.segment_filename = os.path.abspath(os.path.join(dash_folder, os.path.basename(segment_path)))
-    make_sure_path_exists(os.path.dirname(seg_dw_object.segment_filename))
-    print (seg_dw_object.segment_filename)
-    cmd1=["CREATE_STREAM",parsed_uri.path,seg_dw_object.segment_filename]
+    config_dash.LOG.info ("ORIG_DOWNLOAD:%s"%retx_seg_dw_object.segment_filename)
+    #config_dash.LOG.info("ABSPATH_SEG %s" %(os.path.abspath(os.path.join(dash_folder, os.path.basename(segment_path)))))
+    seg_dw_object.segment_filename = segment_url 
+    #os.path.abspath(os.path.join(dash_folder, os.path.basename(segment_path)))
+    #make_sure_path_exists(os.path.dirname(seg_dw_object.segment_filename))
+    #print (seg_dw_object.segment_filename)
+    #cmd1=["CREATE_STREAM",parsed_uri.path,seg_dw_object.segment_filename]
     #segment_file_handle = open(segment_filename, 'wb')
-    keyw1=362146
-    keyr1=562146
+    print(segment_url)
+    cmd1=[segment_url]
+    #keyw1=362146
+    #keyr1=562146
+    key_c_orig_r = 262144
+    key_c_orig_w = 262145
+
     try:
-        mqr1=sysv_ipc.MessageQueue(keyr1, sysv_ipc.IPC_CREAT, max_message_size = 15000)
+        mq_orig_w = sysv_ipc.MessageQueue(key_c_orig_r, sysv_ipc.IPC_CREAT, max_message_size=15000)
     except:
-        print ("ERROR: Queue not created")
+	print("ERROR: Queue not created")
     try:
-        mqw1=sysv_ipc.MessageQueue(keyw1, sysv_ipc.IPC_CREAT, max_message_size = 15000)
+        mq_orig_r = sysv_ipc.MessageQueue(key_c_orig_w, sysv_ipc.IPC_CREAT, max_message_size=15000)
     except:
-        print ("ERROR: Queue not created")
+	print("ERROR: mq_orig_r Queue not created")
 
     chunk_dl_rates = []
+    chunk_number=0
     total_data_dl_time = 0
-    chunk_start_time=timeit.default_timer()
-    process3=Process(target=write_msg, args=(cmd1, mqw1))
+    process3=Process(target=write_msg, args=(cmd1, mq_orig_w))
     #thread3=threading.Thread(target=write_msg,args=(cmd1,mqw1))
     #thread3.start()
     process3.start()
-    timenow = timeit.default_timer()
+    chunk_start_time=timeit.default_timer()
+    # ipc read
+    message = 'start'
+    m = ['start']
+    
+    #print("Py master reading chunks")
     while True:
-        message=mqr1.receive()
-        msg=str(message[0],'utf-8', errors='ignore').split('\x00')[0]
-        if "CONTENT_LENGTH" in str(msg):
-                        print ("Found c length")
-                        i=(msg.split('CONTENT_LENGTH')[1])
-                        c_length=int(i)
-                        chunk_number=0
-                        total_data_dl_time=0
-                        continue
-        if "DONE" in str(msg):
-            with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_QUIC.txt','a') as chk:
-                            chk.write("%s" %segment_url)
-                            for item in seg_dw_object.segment_chunk_rates:
-                                chk.write(",%s" %item)
-                            chk.write("\n")
-            break
-        else:
-            i=msg
-            seg_dw_object.segment_size+=int(i)
+        (message, prior) = mq_orig_r.receive()
+        m = message.split(b':')
+        #print("Reply:{}, content-length:{}\n".format(message,m[1]))
+        #chunk_sizes.append(float(m[1]))
+	if m[0] !=b'end':
+            seg_dw_object.segment_size+=float(m[1])
             timenow = timeit.default_timer()
             chunk_dl_time = timenow - chunk_start_time
             chunk_start_time=timenow
@@ -242,6 +221,19 @@ def download_segment(segment_url, dash_folder):
             total_data_dl_time += chunk_dl_time
             current_chunk_dl_rate = seg_dw_object.segment_size * 8 / total_data_dl_time
             seg_dw_object.segment_chunk_rates.append(current_chunk_dl_rate)
+	else:
+	    break
+
+    
+    #content_length = chunk_sizes.pop()
+# DONE part
+    with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_QUIC.txt','a') as chk:
+         chk.write("{}".format(segment_url))
+         for item in seg_dw_object.segment_chunk_rates:
+             chk.write(",{}".format(item))
+         chk.write("\n")
+#print("{} sum:{}, content_length:{}".format(p_no,sum(chunk_sizes), content_length))
+ 
     process3.join()
     #thread3.join()
     seg_done_q.put(seg_dw_object)
@@ -249,51 +241,50 @@ def download_segment(segment_url, dash_folder):
 
 def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_size, video_segment_duration, play_segment_number, retx_segment_number):
     config_dash.LOG.info ("RETX_DOWNLOAD:Entered")
-    parsed_uri = urllib.parse.urlparse(retx_segment_url)
-    segment_path = '{uri.path}'.format(uri=parsed_uri)
-    while segment_path.startswith('/'):
-        segment_path = segment_path[1:]
+    #parsed_uri = urllib.parse.urlparse(retx_segment_url)
+    #segment_path = '{uri.path}'.format(uri=parsed_uri)
+    #while segment_path.startswith('/'):
+    #    segment_path = segment_path[1:]
     retx_seg_dw_object = SegmentDownloadStats()
-    retx_seg_dw_object.segment_filename = os.path.abspath(os.path.join(dash_folder, os.path.basename(segment_path)))
+    retx_seg_dw_object.segment_filename = retx_segment_url
+    #os.path.abspath(os.path.join(dash_folder, os.path.basename(segment_path)))
     config_dash.LOG.info ("RETX_DOWNLOAD:%s"%retx_seg_dw_object.segment_filename)
-    make_sure_path_exists(os.path.dirname(retx_seg_dw_object.segment_filename))
+    #make_sure_path_exists(os.path.dirname(retx_seg_dw_object.segment_filename))
     print (retx_seg_dw_object.segment_filename)
-    cmd1=["CREATE_STREAM",parsed_uri.path,retx_seg_dw_object.segment_filename]
+    #cmd1=["CREATE_STREAM",parsed_uri.path,retx_seg_dw_object.segment_filename]
     #segment_file_handle = open(segment_filename, 'wb')
+    cmd1=[retx_segment_url]
+    key_c_retx_r = 362146
+    key_c_retx_w = 462146
     keyw2=462146
     keyr2=662146
     current_segment_chunk_rates = []
     try:
-                mqr1=sysv_ipc.MessageQueue(keyr2, sysv_ipc.IPC_CREAT, max_message_size = 15000)
+        mq_retx_w = sysv_ipc.MessageQueue(key_c_retx_r, sysv_ipc.IPC_CREAT, max_message_size=15000)
     except:
-                print ("ERROR: Queue not created")
+	print("ERROR: Queue not created")
     try:
-                mqw1=sysv_ipc.MessageQueue(keyw2, sysv_ipc.IPC_CREAT, max_message_size = 15000)
+        mq_retx_r = sysv_ipc.MessageQueue(key_c_retx_w, sysv_ipc.IPC_CREAT, max_message_size=15000)
     except:
-                print ("ERROR: Queue not created")
+	print("ERROR: mq_orig_r Queue not created")
     chunk_dl_rates = []
+    chunk_number=0
     total_data_dl_time = 0
-    chunk_start_time=timeit.default_timer()
     #thread3=threading.Thread(target=write_msg,args=(cmd1,mqw1))
-    process3=Process(target=write_msg, args=(cmd1,mqw1))
+    process3=Process(target=write_msg, args=(cmd1,mq_retx_w))
     process3.start()
+    chunk_start_time=timeit.default_timer()
+    #ipc read
+    message = 'start'
+    m = ['start']
     #thread3.start()
     while True:
-        message=mqr1.receive()
-        msg=str(message[0],'utf-8', errors='ignore').split('\x00')[0]
-        if "CONTENT_LENGTH" in str(msg):
-                        config_dash.LOG.info ("RETX_DOWNLOAD:Found c length")
-                        i=(msg.split('CONTENT_LENGTH')[1])
-                        c_length=int(i)
-                        chunk_number=0
-                        total_data_dl_time=0
-                        continue
-        if "DONE" in str(msg):
-            config_dash.LOG.info("RETX_DOWNLOAD: chunk_rate")
-            break
-        else:
-            i=msg
-            retx_seg_dw_object.segment_size+=int(i)
+        (message, prior) = mq_orig_r.receive()
+        m = message.split(b':')
+        #print("Reply:{}, content-length:{}\n".format(message,m[1]))
+        #chunk_sizes.append(float(m[1]))
+	if m[0] !=b'end':
+            retx_seg_dw_object.segment_size+=float(m[1])
             timenow = timeit.default_timer()
             chunk_dl_time = timenow - chunk_start_time
             chunk_start_time=timenow
@@ -301,6 +292,16 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
             total_data_dl_time += chunk_dl_time
             current_chunk_dl_rate = retx_seg_dw_object.segment_size * 8 / total_data_dl_time
             retx_seg_dw_object.segment_chunk_rates.append(current_chunk_dl_rate)
+	else:
+	    break
+    #content_length = chunk_sizes.pop()
+# DONE part
+    with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_QUIC.txt','a') as chk:
+         chk.write("RETX:{}".format(segment_url))
+         for item in retx_seg_dw_object.segment_chunk_rates:
+             chk.write(",{}".format(item))
+         chk.write("\n")
+		
     #thread3.join()
     process3.join()
     retx_done_q.put(retx_seg_dw_object)
