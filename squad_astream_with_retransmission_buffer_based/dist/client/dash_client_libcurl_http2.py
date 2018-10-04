@@ -188,11 +188,11 @@ def download_segment(segment_url, dash_folder):
     try:
         mq_orig_w = sysv_ipc.MessageQueue(key_c_orig_r, sysv_ipc.IPC_CREAT, max_message_size=15000)
     except:
-	print("ERROR: Queue not created")
+        print("ERROR: Queue not created")
     try:
         mq_orig_r = sysv_ipc.MessageQueue(key_c_orig_w, sysv_ipc.IPC_CREAT, max_message_size=15000)
     except:
-	print("ERROR: mq_orig_r Queue not created")
+        print("ERROR: mq_orig_r Queue not created")
 
     chunk_dl_rates = []
     chunk_number=0
@@ -212,7 +212,7 @@ def download_segment(segment_url, dash_folder):
         m = message.split(b':')
         #print("Reply:{}, content-length:{}\n".format(message,m[1]))
         #chunk_sizes.append(float(m[1]))
-	if m[0] !=b'end':
+        if m[0] !=b'end':
             seg_dw_object.segment_size+=float(m[1])
             timenow = timeit.default_timer()
             chunk_dl_time = timenow - chunk_start_time
@@ -221,8 +221,8 @@ def download_segment(segment_url, dash_folder):
             total_data_dl_time += chunk_dl_time
             current_chunk_dl_rate = seg_dw_object.segment_size * 8 / total_data_dl_time
             seg_dw_object.segment_chunk_rates.append(current_chunk_dl_rate)
-	else:
-	    break
+        else:
+            break
 
     
     #content_length = chunk_sizes.pop()
@@ -262,11 +262,11 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
     try:
         mq_retx_w = sysv_ipc.MessageQueue(key_c_retx_r, sysv_ipc.IPC_CREAT, max_message_size=15000)
     except:
-	print("ERROR: Queue not created")
+        print("ERROR: Queue not created")
     try:
         mq_retx_r = sysv_ipc.MessageQueue(key_c_retx_w, sysv_ipc.IPC_CREAT, max_message_size=15000)
     except:
-	print("ERROR: mq_orig_r Queue not created")
+        print("ERROR: mq_orig_r Queue not created")
     chunk_dl_rates = []
     chunk_number=0
     total_data_dl_time = 0
@@ -283,7 +283,7 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
         m = message.split(b':')
         #print("Reply:{}, content-length:{}\n".format(message,m[1]))
         #chunk_sizes.append(float(m[1]))
-	if m[0] !=b'end':
+        if m[0] !=b'end':
             retx_seg_dw_object.segment_size+=float(m[1])
             timenow = timeit.default_timer()
             chunk_dl_time = timenow - chunk_start_time
@@ -292,8 +292,8 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
             total_data_dl_time += chunk_dl_time
             current_chunk_dl_rate = retx_seg_dw_object.segment_size * 8 / total_data_dl_time
             retx_seg_dw_object.segment_chunk_rates.append(current_chunk_dl_rate)
-	else:
-	    break
+        else:
+            break
     #content_length = chunk_sizes.pop()
 # DONE part
     with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_QUIC.txt','a') as chk:
@@ -877,8 +877,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             normal_dw_count+=1
             with open("/dev/SQUAD/dw_cnt",'a') as dw_cnt:
                 dw_cnt.write("{}\n".format(normal_dw_count))
+
             try:
-              if (not thread_seg.is_alive()):
+                if (not thread_seg.is_alive()):
                         if seg_done_q.qsize()>0:
                                 lock.acquire()
                                 seg_dw_object=seg_done_q.get()
