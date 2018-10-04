@@ -226,7 +226,7 @@ def download_segment(segment_url, dash_folder):
 
     # content_length = chunk_sizes.pop()
     # DONE part
-    with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_QUIC.txt', 'a') as chk:
+    with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_libcurl_HTTP2.txt', 'a') as chk:
         chk.write("{}".format(segment_url))
         for item in seg_dw_object.segment_chunk_rates:
             chk.write(",{}".format(item))
@@ -293,7 +293,7 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
             break
     # content_length = chunk_sizes.pop()
     # DONE part
-    with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_QUIC.txt', 'a') as chk:
+    with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_libcurl_HTTP2.txt', 'a') as chk:
         chk.write("RETX:{}".format(segment_url))
         for item in retx_seg_dw_object.segment_chunk_rates:
             chk.write(",{}".format(item))
