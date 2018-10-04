@@ -174,7 +174,7 @@ def download_segment(segment_url, dash_folder):
     # while segment_path.startswith('/'):
     #    segment_path = segment_path[1:]
     seg_dw_object = SegmentDownloadStats()
-    config_dash.LOG.info("ORIG_DOWNLOAD:%s" % retx_seg_dw_object.segment_filename)
+    config_dash.LOG.info("ORIG_DOWNLOAD:%s" % seg_dw_object.segment_filename)
     # config_dash.LOG.info("ABSPATH_SEG %s" %(os.path.abspath(os.path.join(dash_folder, os.path.basename(segment_path)))))
     seg_dw_object.segment_filename = segment_url
     # os.path.abspath(os.path.join(dash_folder, os.path.basename(segment_path)))
@@ -911,7 +911,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                     dash_player.current_play_segment, retx_segment_number))
                     thread_retx.start()
                     # retx_thread=True
-            except NameError or UnboundLocalError:
+            except (NameError, UnboundLocalError) as e:
                 config_dash.LOG.info(
                     "{}: Started downloading 1st retx_segment {}".format(playback_type.upper(), retx_segment_url))
                 retx_flag = False
@@ -942,6 +942,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 dw_cnt.write("{}\n".format(normal_dw_count))
 
             try:
+                thread_seg
                 if not thread_seg.is_alive():
                     if seg_done_q.qsize() > 0:
                         lock.acquire()
@@ -957,7 +958,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                     thread_seg.start()
             # else:
             # seg_pending_q.put([segment_url, file_identifier])
-            except NameError or UnboundLocalError:
+            except (NameError, UnboundLocalError) as e: # (UnboundLocalError) as e:
                 start_time = timeit.default_timer()
                 thread_seg = Process(target=download_segment, args=(segment_url, file_identifier,))
                 # thread_seg=threading.Thread(target=download_segment,args=(segment_url, file_identifier,))
