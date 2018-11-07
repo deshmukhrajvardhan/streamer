@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "time_snippet.h"
 
 #ifdef _WIN32
 #define SHORT_SLEEP Sleep(100)
@@ -266,10 +267,12 @@ int main(){
   retx_chunk.size = 0;    /* no data at this point */
   orig_done=0;
   retx_done=0;
+  uint64 url_to_multi_perf = 0;
   i = 0;                                                           
   do {
     // diff condition
-    if (orig_easy==0){
+    if (orig_easy==0){ 
+    url_to_multi_perf = GetTimeMs64();
     std::future<int> future_orig_r = std::async(ReadMsg, myfifor_orig,myfifow_orig, stream_send, key_c_orig_r);
     auto read_ret_orig = future_orig_r.get();
     std::cout<<"\nurl:"<<read_ret_orig<<std::endl;
@@ -294,6 +297,8 @@ int main(){
       curl_easy_setopt(easy[ORIG_EASY], CURLOPT_WRITEDATA, (void *)&chunk);
       curl_multi_add_handle(multi_handle, easy[ORIG_EASY]);
       ++orig_easy;
+      curl_multi_perform(multi_handle, &handleChange.still_running);
+      std::cout<<"\nTime from ipc url read till 1st multi_perform:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
     }
     }
     
@@ -440,7 +445,8 @@ int main(){
 	      //	      printf("\n--------------Orig_Size: %.0f---------------\n", cl_orig);
                 orig_done = 1;
                 printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,++handleChange.seg_num,handleChange.chunk_size);
-            /*
+                std::cout<<"\nTime from ipc url read till download completion:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
+		    /*
                 string last_chunk_size = std::to_string(handleChange.chunk_size);
                 int read_exec = 1; //last chunk
                 auto future = std::async(WriteMsg, last_chunk_size, read_exec, key_c_orig_w);
