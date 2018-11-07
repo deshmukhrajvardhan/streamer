@@ -297,8 +297,10 @@ int main(){
       curl_easy_setopt(easy[ORIG_EASY], CURLOPT_WRITEDATA, (void *)&chunk);
       curl_multi_add_handle(multi_handle, easy[ORIG_EASY]);
       ++orig_easy;
+      std::cout<<"\nTime from ipc url read until 1st multi_perform:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
+      url_to_multi_perf = GetTimeMS64();
       curl_multi_perform(multi_handle, &handleChange.still_running);
-      std::cout<<"\nTime from ipc url read till 1st multi_perform:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
+      
     }
     }
     
