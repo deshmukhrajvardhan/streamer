@@ -273,9 +273,10 @@ int main(){
     // diff condition
     if (orig_easy==0){
     url_to_multi_perf = GetTimeMs64();
-    std::future<int> future_orig_r = std::async(ReadMsg, myfifor_orig,myfifow_orig, stream_send, key_c_orig_r);
-    auto read_ret_orig = future_orig_r.get();
-    std::cout<<"\nurl:"<<read_ret_orig<<std::endl;
+    //std::future<int> future_orig_r = std::async(ReadMsg, myfifor_orig,myfifow_orig, stream_send, key_c_orig_r);
+    //auto read_ret_orig = future_orig_r.get();
+    int read_ret_orig = ReadMsg(myfifor_orig,myfifow_orig, stream_send, key_c_orig_r);
+    //std::cout<<"\nurl:"<<read_ret_orig<<std::endl;
     if (read_ret_orig==-2) {
       break;
     }
@@ -298,7 +299,7 @@ int main(){
       curl_multi_add_handle(multi_handle, easy[ORIG_EASY]);
       ++orig_easy;
       std::cout<<"\nTime from ipc url read until 1st multi_perform:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
-      url_to_multi_perf = GetTimeMS64();
+      url_to_multi_perf = GetTimeMs64();
       curl_multi_perform(multi_handle, &handleChange.still_running);
       
     }
@@ -448,7 +449,7 @@ int main(){
                 orig_done = 1;
                 printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,++handleChange.seg_num,handleChange.chunk_size);
                 std::cout<<"\nTime from ipc url read till download completion:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
-		std::cout<<"\n(only multiperform) Download Rate:"<<orig_content_len/(GetTimeMs64()-url_to_multi_perf)<<"\n";
+		std::cout<<"\n(only multiperform) Download Rate:"<<(orig_content_len*8*1000)/(GetTimeMs64()-url_to_multi_perf)<<"\n";
 		    /*
                 string last_chunk_size = std::to_string(handleChange.chunk_size);
                 int read_exec = 1; //last chunk
