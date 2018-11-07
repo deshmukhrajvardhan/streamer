@@ -446,6 +446,7 @@ int main(){
                 orig_done = 1;
                 printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,++handleChange.seg_num,handleChange.chunk_size);
                 std::cout<<"\nTime from ipc url read till download completion:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
+		std::cout<<"\n(only multiperform) Download Rate:"<<orig_content_len/(GetTimeMs64()-url_to_multi_perf)<<"\n";
 		    /*
                 string last_chunk_size = std::to_string(handleChange.chunk_size);
                 int read_exec = 1; //last chunk
