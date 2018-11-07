@@ -310,8 +310,10 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",(12+(j)+(1)));
       //++retx_easy;
      }
     ++j;
+    std::cout<<"\nTime from ipc url read until 1st multi_perform:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
+    url_to_multi_perf = GetTimeMS64();
     curl_multi_perform(multi_handle, &handleChange.still_running);
-    std::cout<<"\nTime from ipc url read till 1st multi_perform:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
+
     }
 /*    if (orig_easy==0){
     auto future_orig_r = std::async(ReadMsg, myfifor_orig,myfifow_orig, stream_send, key_c_orig_r);
@@ -517,7 +519,9 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",(12+(j)+(1)));
                 orig_done = 1;
                 printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,++handleChange.seg_num,handleChange.chunk_size);
                 std::cout<<"\nTime from ipc url read till download completion:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
-                string last_chunk_size = std::to_string(handleChange.chunk_size);
+                std::cout<<"\n(only multiperform) Download Rate:"<<orig_content_len/(GetTimeMs64()-url_to_multi_perf)<<"\n";
+
+		string last_chunk_size = std::to_string(handleChange.chunk_size);
                 int read_exec = 1; //last chunk
                 auto future = std::async(WriteMsg, last_chunk_size, read_exec, key_c_orig_w);
                 auto write_ret = future.get();
