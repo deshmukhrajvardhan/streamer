@@ -267,7 +267,7 @@ int main(){
   retx_chunk.size = 0;    /* no data at this point */
   orig_done=0;
   retx_done=0;
-  uint64 url_to_multi_perf = 0;
+  uint64 url_to_multi_perf = 0, multi_perf_to_done = 0;
   i = 0;                                                           
   do {
     // diff condition
@@ -299,7 +299,7 @@ int main(){
       curl_multi_add_handle(multi_handle, easy[ORIG_EASY]);
       ++orig_easy;
       std::cout<<"\nTime from ipc url read until 1st multi_perform:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
-      url_to_multi_perf = GetTimeMs64();
+      multi_perf_to_done = GetTimeMs64();
       curl_multi_perform(multi_handle, &handleChange.still_running);
       
     }
@@ -449,7 +449,8 @@ int main(){
                 orig_done = 1;
                 printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,++handleChange.seg_num,handleChange.chunk_size);
                 std::cout<<"\nTime from ipc url read till download completion:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
-		std::cout<<"\n(only multiperform) Download Rate:"<<(orig_content_len*8*1000)/(GetTimeMs64()-url_to_multi_perf)<<"\n";
+		std::cout<<"\nTime from easy_handle set till download completion:"<<GetTimeMs64()-multi_perf_to_done<<"\n";
+		std::cout<<"\n(only multiperform) Download Rate:"<<(orig_content_len*8*1000)/(GetTimeMs64()-multi_perf_to_done)<<"\n";
 		    /*
                 string last_chunk_size = std::to_string(handleChange.chunk_size);
                 int read_exec = 1; //last chunk
