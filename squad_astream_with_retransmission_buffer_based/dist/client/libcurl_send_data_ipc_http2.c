@@ -28,7 +28,14 @@
 
 using std::string;
 
-string ReadMsg(char *myfifor,char *myfifow, bool stream, key_t key){
+struct HandleChange {
+  int prev_run,still_running,change,seg_num;
+  double content_len;
+  string url;
+  size_t chunk_size,retx_chunk_size;
+} handleChange;
+
+int ReadMsg(char *myfifor,char *myfifow, bool stream, key_t key){
   //std::cout << "EnteredRead\n";
   int msgid;
   struct mesg_buffer {
@@ -36,7 +43,7 @@ string ReadMsg(char *myfifor,char *myfifow, bool stream, key_t key){
     char mesg_text[200];
   };
   mesg_buffer msg;
-  string cmd="";
+  int cmd;
   msgid = msgget(key, 0666 | IPC_CREAT);
   ssize_t numbytes=0;
   while (numbytes==0){
@@ -46,21 +53,24 @@ string ReadMsg(char *myfifor,char *myfifow, bool stream, key_t key){
   }
   if (numbytes==-1) {
     //    std::cout<<"IPC_NOWAIT";
-    cmd = "-1";
-    return cmd;
-  }
-  string message(msg.mesg_text, numbytes);
-  //  std::cout<<"Received:"<< message<<"\t"<<std::endl;
-  if (message.compare("QUIT")==0){
-    std::cout << "QUIT" << std::endl;
-    cmd = "-2";
+    cmd = -1;
     return cmd;
   }
   else {
+    string message(msg.mesg_text, numbytes);
+    //  std::cout<<"Received:"<< message<<"\t"<<std::endl;
+    if (message.compare("QUIT")==0){
+        std::cout << "QUIT" << std::endl;
+        cmd = -2;
+        return cmd;
+    }
+    else {
     //    std::cout<<"Received:"<< message<<"\t"<<std::endl;
-    return message;
+    cmd = 1;
+    handleChange.url.assign(message);
+    return cmd;
+    }
   }
-
 }
 
 // Write Msg
@@ -107,12 +117,6 @@ static size_t header_callback(char *buffer, size_t size,
   return nitems * size;
 }
 
-struct HandleChange {
-  int prev_run,still_running,change,seg_num;
-  double content_len;
-  size_t chunk_size,retx_chunk_size;
-} handleChange;
-
 static size_t
 WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
@@ -132,11 +136,11 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
   
   handleChange.chunk_size+= realsize;
   if(handleChange.chunk_size>=MAX_CHUNK_SIZE) {
-        string orig_chunk_size = std::to_string(handleChange.chunk_size);
+        /*string orig_chunk_size = std::to_string(handleChange.chunk_size);
         key_t key_c_orig_w = 262145;
         int read_exec = 1;
         auto future = std::async(WriteMsg, orig_chunk_size, read_exec, key_c_orig_w);
-        auto write_ret = future.get();
+        auto write_ret = future.get();*/
         handleChange.chunk_size=0;
     }
 //  printf("\nWriting: %d Bytes in memory",mem->size);                                            
@@ -163,11 +167,11 @@ WriteMemoryCallback2(void *contents, size_t size, size_t nmemb, void *userp)
    
   handleChange.retx_chunk_size+= realsize;
     if(handleChange.retx_chunk_size>=MAX_CHUNK_SIZE) {
-        string retx_chunk_size = std::to_string(handleChange.retx_chunk_size);
+        /*string retx_chunk_size = std::to_string(handleChange.retx_chunk_size);
         key_t key_c_retx_w=462146;
         int read_exec = 1;
         auto future = std::async(WriteMsg, retx_chunk_size, read_exec, key_c_retx_w);
-        auto write_ret = future.get();
+        auto write_ret = future.get();*/
         handleChange.retx_chunk_size=0;
     }
   return realsize;
@@ -261,72 +265,27 @@ int main(){
   chunk.size = 0;    /* no data at this point */
   retx_chunk.memory = (char*) malloc(1);  /* will be grown as needed by the realloc above */
   retx_chunk.size = 0;    /* no data at this point */
-  orig_done=1;
-  retx_done=1;
-  uint64 url_to_multi_perf = 0;
+  orig_done=0;
+  retx_done=0;
+  uint64 url_to_multi_perf = 0, multi_perf_to_done = 0;
   i = 0;                                                           
   do {
-    
-    if(orig_done){
-      if(j>5){break;}
-    chunk.memory = (char*) malloc(1);  /* will be grown as needed by the realloc above */
-    chunk.size = 0;    /* no data at this point */
-    retx_chunk.memory = (char*) malloc(1);  /* will be grown as needed by the realloc above */
-    retx_chunk.size = 0;    /* no data at this point */
-    orig_done=0;
-    retx_done=0;
-    i = 0;
+    // diff condition
+    if (orig_easy==0){
     url_to_multi_perf = GetTimeMs64();
-    while(i < NUM_HANDLES-1) {
-      char url[1024];
-      snprintf(url, 1024, "https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/Bi\
-gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",(12+(j)+(1)));
-      //snprintf(url, 1024, "https://http2.akamai.com/demo");                                       
-      easy[i] = curl_easy_init();
-      //      curl_easy_setopt(easy[i], CURLOPT_VERBOSE, 1L);
-      //printf("\nurl:%s",url);
-      curl_easy_setopt(easy[i], CURLOPT_URL, url);
-      curl_easy_setopt(easy[i], CURLOPT_SSLCERTTYPE, "PEM");
-      curl_easy_setopt(easy[i], CURLOPT_CAINFO, "cert.pem");
-      curl_easy_setopt(easy[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-      curl_easy_setopt(easy[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-      /* send all data to this function  */
-      if(i==0) {
-        curl_easy_setopt(easy[i], CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-
-        /* we pass our 'chunk' struct to the callback function */
-        curl_easy_setopt(easy[i], CURLOPT_WRITEDATA, (void *)&chunk);
-        ++orig_easy;
-      }
-      else {
-        curl_easy_setopt(easy[i], CURLOPT_WRITEFUNCTION, WriteMemoryCallback2);
-
-        /* we pass our 'chunk' struct to the callback function */
-        curl_easy_setopt(easy[i], CURLOPT_WRITEDATA, (void *)&retx_chunk);
-        ++retx_easy;
-      }
-      curl_multi_add_handle(multi_handle, easy[i]);
-      ++i;
-      //++retx_easy;
-     }
-    ++j;
-    std::cout<<"\nTime from ipc url read until 1st multi_perform:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
-    url_to_multi_perf = GetTimeMs64();
-    curl_multi_perform(multi_handle, &handleChange.still_running);
-
-    }
-/*    if (orig_easy==0){
-    auto future_orig_r = std::async(ReadMsg, myfifor_orig,myfifow_orig, stream_send, key_c_orig_r);
-    auto read_ret_orig = future_orig_r.get();
-    if (read_ret_orig.compare("-2")==0) {
+    //std::future<int> future_orig_r = std::async(ReadMsg, myfifor_orig,myfifow_orig, stream_send, key_c_orig_r);
+    //auto read_ret_orig = future_orig_r.get();
+    int read_ret_orig = ReadMsg(myfifor_orig,myfifow_orig, stream_send, key_c_orig_r);
+    //std::cout<<"\nurl:"<<read_ret_orig<<std::endl;
+    if (read_ret_orig==-2) {
       break;
     }
-    if (read_ret_orig.compare("-1")!=0) {
+    if (read_ret_orig==1) {
       //std::cout<<"\nurl:"<<read_ret_orig<<std::endl;
       //add url to easy handle and multi handle
       char url[1024];
 
-      snprintf(url, 1024, "%s", read_ret_orig.c_str());
+      snprintf(url, 1024, "%s", handleChange.url.c_str());
       easy[ORIG_EASY] = curl_easy_init(); //easy_handle is sticky
       //curl_easy_setopt(easy[ORIG_EASY], CURLOPT_VERBOSE, 1L);
       printf("\nurl:%s",url);
@@ -339,45 +298,16 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",(12+(j)+(1)));
       curl_easy_setopt(easy[ORIG_EASY], CURLOPT_WRITEDATA, (void *)&chunk);
       curl_multi_add_handle(multi_handle, easy[ORIG_EASY]);
       ++orig_easy;
+      std::cout<<"\nTime from ipc url read until 1st multi_perform:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
+      multi_perf_to_done = GetTimeMs64();
+      curl_multi_perform(multi_handle, &handleChange.still_running);
+      
     }
     }
     
-    if (retx_easy==0){
-    // #2 Thread
-    auto future_retx_r = std::async(ReadMsg, myfifor_retx,myfifow_retx, stream_send, key_c_retx_r);
-    auto read_ret_retx = future_retx_r.get();
-    if (read_ret_retx.compare("-2")==0) {
-      break;
-    }
-    if (read_ret_retx.compare("-1")!=0) {
-      //std::cout<<"\nRetx_url:"<<reidxad_ret_retx<<std::endl;
-      //add url to easy handle and multi handle
-      char retx_url[1024];
-
-      snprintf(retx_url, 1024, "%s", read_ret_retx.c_str());
-      easy[RETX_EASY] = curl_easy_init(); //easy_handle is sticky
-
-      //curl_easy_setopt(easy[RETX_EASY], CURLOPT_VERBOSE, 1L);
-      printf("\nRetx_url:%s",retx_url);
-      curl_easy_setopt(easy[RETX_EASY], CURLOPT_URL, retx_url);
-      curl_easy_setopt(easy[RETX_EASY], CURLOPT_SSLCERTTYPE, "PEM");
-      curl_easy_setopt(easy[RETX_EASY], CURLOPT_CAINFO, "cert.pem");
-      curl_easy_setopt(easy[RETX_EASY], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-      curl_easy_setopt(easy[RETX_EASY], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-
-      // send all data to this function  /
-      curl_easy_setopt(easy[RETX_EASY], CURLOPT_WRITEFUNCTION, WriteMemoryCallback2);
-
-      // we pass our 'chunk' struct to the callback function /
-      curl_easy_setopt(easy[RETX_EASY], CURLOPT_WRITEDATA, (void *)&retx_chunk);
-      curl_multi_add_handle(multi_handle, easy[RETX_EASY]);
-      ++retx_easy;
-    }
-    }
-    */
     /* we start some action by calling perform right away */
     //int still_running;
-    //if (handleChange.still_running){
+    if (orig_easy>0){ // multiperform only if url set 
       struct timeval timeout;
       int rc; /* select() return code */
       CURLMcode mc; /* curl_multi_fdset() return code */
@@ -519,9 +449,10 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",(12+(j)+(1)));
                 orig_done = 1;
                 printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,++handleChange.seg_num,handleChange.chunk_size);
                 std::cout<<"\nTime from ipc url read till download completion:"<<GetTimeMs64()-url_to_multi_perf<<"\n";
-                std::cout<<"\n(only multiperform) Download Rate:"<<(orig_content_len*8*1000)/(GetTimeMs64()-url_to_multi_perf)<<"\n";
-
-		string last_chunk_size = std::to_string(handleChange.chunk_size);
+		std::cout<<"\nTime from easy_handle set till download completion:"<<GetTimeMs64()-multi_perf_to_done<<"\n";
+		std::cout<<"\n(only multiperform) Download Rate:"<<(orig_content_len*8*1000)/(GetTimeMs64()-multi_perf_to_done)<<"\n";
+		    /*
+                string last_chunk_size = std::to_string(handleChange.chunk_size);
                 int read_exec = 1; //last chunk
                 auto future = std::async(WriteMsg, last_chunk_size, read_exec, key_c_orig_w);
                 auto write_ret = future.get();
@@ -529,10 +460,10 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",(12+(j)+(1)));
                 string orig_chunk_size = std::to_string(orig_content_len);//cl_orig);
                 read_exec = 2; //end of segment
                 future = std::async(WriteMsg, orig_chunk_size, read_exec, key_c_orig_w);
-                write_ret = future.get();
+                write_ret = future.get();*/
                 handleChange.chunk_size=0;
-                std::cout<<"\nclearing orig_mem\n";
-                free(chunk.memory);// and cleared when we move to next set of parallel stream downloads 
+                std::cout<<"\nclearing orig_mem\n";            
+                free(chunk.memory); // and cleared when we move to next set of parallel stream downloads 
         // memory assigned before it is actually needed        
                 chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
                 chunk.size = 0;    /* no data at this point */;
@@ -555,6 +486,7 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",(12+(j)+(1)));
                 retx_done = 1;
                 printf("\nMain2:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,++handleChange.seg_num,handleChange.retx_chunk_size);
         //    
+        /*
                 string last_chunk_size = std::to_string(handleChange.retx_chunk_size);
                 int read_exec = 1; //last chunk
                 auto future = std::async(WriteMsg, last_chunk_size, read_exec, key_c_retx_w);
@@ -564,13 +496,14 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",(12+(j)+(1)));
                 string retx_chunk_size = std::to_string(retx_content_len);//cl_retx);
                 read_exec = 2; //end of segment
                 future = std::async(WriteMsg, retx_chunk_size, read_exec, key_c_retx_w);
-                write_ret = future.get();
+                write_ret = future.get();*/
                 handleChange.retx_chunk_size=0;
                 std::cout<<"\nclearing retx_mem\n";
                 free(retx_chunk.memory); // and cleared when we move to next set of parallel stream downloads
                 // memory assigned before it is actually needed  
                 retx_chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
                 retx_chunk.size = 0;    /* no data at this point */
+                curl_multi_remove_handle(multi_handle,easy[RETX_EASY]);
                 if(retx_easy>0) {
                     --retx_easy;
                 }
@@ -579,8 +512,9 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",(12+(j)+(1)));
                 
             }
         }
-      }
-        //#descriptive
+      }//#descriptive
+       
+       } 
      }
     } while(1);
     //free(chunk.memory); // essentially data from parallel streams is stored in memory               
@@ -592,6 +526,3 @@ gBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s%d.m4s",(12+(j)+(1)));
 
   exit(0);
 }
-
-
-
