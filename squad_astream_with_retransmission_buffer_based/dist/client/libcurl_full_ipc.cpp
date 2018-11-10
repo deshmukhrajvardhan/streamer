@@ -507,9 +507,9 @@ int main(){
                 auto future = std::async(WriteMsg, last_chunk_size, read_exec, key_c_orig_w);
                 auto write_ret = future.get();
 	  //    
-                string orig_chunk_size = std::to_string(orig_content_len);//cl_orig);
+                string orig_segment_size = std::to_string(orig_content_len);//cl_orig);
                 read_exec = 2; //end of segment
-                future = std::async(WriteMsg, orig_chunk_size, read_exec, key_c_orig_w);
+                future = std::async(WriteMsg, orig_segment_size, read_exec, key_c_orig_w);
                 write_ret = future.get();
                 handleChange.chunk_size=0;
                 std::cout<<"\nclearing orig_mem\n";            
@@ -550,9 +550,9 @@ int main(){
                 auto write_ret = future.get();
             
         //
-                string retx_chunk_size = std::to_string(retx_content_len);//cl_retx);
+                string retx_segment_size = std::to_string(retx_content_len);//cl_retx);
                 read_exec = 2; //end of segment
-                future = std::async(WriteMsg, retx_chunk_size, read_exec, key_c_retx_w);
+                future = std::async(WriteMsg, retx_segment_size, read_exec, key_c_retx_w);
                 write_ret = future.get();
                 handleChange.retx_chunk_size=0;
                // std::cout<<"\nclearing retx_mem\n";
