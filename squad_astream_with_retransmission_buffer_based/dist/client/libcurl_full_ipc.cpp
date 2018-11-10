@@ -560,7 +560,6 @@ int main(){
                 // memory assigned before it is actually needed  
                 retx_chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
                 retx_chunk.size = 0;    /* no data at this point */
-                curl_multi_remove_handle(multi_handle,easy[RETX_EASY]);
                 if(retx_easy>0) {
                     --retx_easy;
                 }
