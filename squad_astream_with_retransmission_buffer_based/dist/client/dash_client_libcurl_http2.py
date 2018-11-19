@@ -98,6 +98,7 @@ class SegmentDownloadStats:
         self.segment_size = 0
         self.segment_filename = None
         self.segment_chunk_rates = []
+        self.segment_dw_time = 0
 
 
 def get_mpd(url):
@@ -204,6 +205,7 @@ def download_segment(segment_url, dash_folder):
     # thread3.start()
     process3.start()
     chunk_start_time = timeit.default_timer()
+    segment_start_time=chunk_start_time
     # ipc read
 
     # print("Py master reading chunks")
@@ -226,12 +228,17 @@ def download_segment(segment_url, dash_folder):
 
     # content_length = chunk_sizes.pop()
     # DONE part
+    seg_dw_object.segment_dw_time = (timeit.default_timer()-segment_start_time)
+    segment_dw_rate = seg_dw_object.segment_size * 8/seg_dw_object.segment_dw_time
+
     with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_libcurl_HTTP2.txt', 'a') as chk:
         chk.write("{}".format(segment_url))
         for item in seg_dw_object.segment_chunk_rates:
             chk.write(",{}".format(item))
         chk.write("\n")
     # print("{} sum:{}, content_length:{}".format(p_no,sum(chunk_sizes), content_length))
+    with open('/dev/SQUAD/segment_rate_squad_libcurl_HTTP2.txt', 'a') as chk:
+        chk.write("{},{}\n".format(segment_url,segment_dw_rate))
 
     process3.join()
     # thread3.join()
@@ -273,6 +280,8 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
     process3 = Process(target=write_msg, args=(cmd1, mq_retx_w))
     process3.start()
     chunk_start_time = timeit.default_timer()
+    retx_segment_start_time=chunk_start_time
+    
     # ipc read
     # thread3.start()
     while True:
@@ -293,11 +302,18 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
             break
     # content_length = chunk_sizes.pop()
     # DONE part
+    retx_seg_dw_object.segment_dw_time = (timeit.default_timer()-retx_segment_start_time)
+
+    retx_segment_dw_rate = retx_seg_dw_object.segment_size * 8/retx_seg_dw_object.segment_dw_time
+
     with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_libcurl_HTTP2.txt', 'a') as chk:
         chk.write("RETX:{}".format(segment_url))
         for item in retx_seg_dw_object.segment_chunk_rates:
             chk.write(",{}".format(item))
         chk.write("\n")
+    
+    with open('/dev/SQUAD/segment_rate_squad_libcurl_HTTP2.txt', 'a') as chk:
+        chk.write("{},{}\n".format(segment_url,retx_segment_dw_rate))
 
     # thread3.join()
     process3.join()
@@ -812,7 +828,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 if retx_done_q.qsize() > 0:
                     lock.acquire()
                     retx_seg_dw_object = retx_done_q.get()
-                    retx_segment_download_time = timeit.default_timer() - retx_start_time
+                    retx_segment_download_time = retx_seg_dw_object.segment_dw_time#timeit.default_timer() - retx_start_time
                     lock.release()
                     # with open("/dev/SQUAD/retx_thread_decision",'a') as retx_state:
                     #        retx_state.write("retx_flag: {}, retx_seg_size: {},normal_url: {}\n".format(retx_flag, retx_seg_dw_object.segment_size, segment_url))
@@ -825,7 +841,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                             "{}: Downloaded debug Retxsegment {} Chunk Rate len {}".format(playback_type.upper(),
                                                                                            retx_segment_url, len(
                                     retx_seg_dw_object.segment_chunk_rates)))
-                        # retx_segment_download_time = timeit.default_timer() - retx_start_time #lock this as this is given to emperical_dash.py
+                        retx_segment_download_time = retx_seg_dw_object.segment_dw_time # timeit.default_timer() - retx_start_time #lock this as this is given to emperical_dash.py
                         retx_segment_download_rate = retx_seg_dw_object.segment_size / retx_segment_download_time
                         lock.acquire()
                         segment_w_chunks.append(retx_seg_dw_object.segment_chunk_rates)
@@ -947,7 +963,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                     if seg_done_q.qsize() > 0:
                         lock.acquire()
                         seg_dw_object = seg_done_q.get()
-                        segment_download_time = timeit.default_timer() - start_time
+                        segment_download_time = seg_dw_object.segment_dw_time#timeit.default_timer() - start_time
                         lock.release()
                     # else:
                     # seg_dw_object=None
@@ -964,7 +980,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 # thread_seg=threading.Thread(target=download_segment,args=(segment_url, file_identifier,))
                 thread_seg.start()
                 seg_dw_object = seg_done_q.get()
-                segment_download_time = timeit.default_timer() - start_time
+                segment_download_time = seg_dw_object.segment_dw_time # timeit.default_timer() - start_time
             # seg_dw_object = download_segment(segment_url, file_identifier)
             # segment_size=seg_dw_object.segment_size #lock this as this is given to emperical_dash.py
             ''' lock apped into segment_w_chunks'''
@@ -973,7 +989,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             config_dash.LOG.error("Unable to save segment %s" % e)
             return None
         ''' retx_seg_dw seperate and global (as one retx at a time) NO join?'''
-        # segment_download_time = timeit.default_timer() - start_time #lock this as this is given to emperical_dash.py
+        segment_download_time = seg_dw_object.segment_dw_time # timeit.default_timer() - start_time #lock this as this is given to emperical_dash.py
         ''' Create global and update in dw_seg()    (as one retx at a time)'''
         if seg_dw_object.segment_size > 0:
             segment_size = seg_dw_object.segment_size
