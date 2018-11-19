@@ -418,7 +418,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     delay = 0
     normal_dw_count = 0
     segment_duration = 0
-    segment_size = segment_download_time = None
+    segment_download_time = 0
     # Netflix Variables
     average_segment_sizes = netflix_rate_map = None
     netflix_state = "INITIAL"
@@ -605,6 +605,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 if segment_size == 0:
                     curr_rate = 0
                 else:
+                    print("Segment size:{}, Dw_time:{}".format(segment_size,segment_download_time))
                     curr_rate = (segment_size * 8) / segment_download_time
                 # segment_dl_rates.append(curr_rate)
                 average_segment_sizes = get_average_segment_sizes(dp_object)
@@ -828,7 +829,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 if retx_done_q.qsize() > 0:
                     lock.acquire()
                     retx_seg_dw_object = retx_done_q.get()
-                    retx_segment_download_time = retx_seg_dw_object.segment_dw_time#timeit.default_timer() - retx_start_time
+                    #retx_segment_download_time = retx_seg_dw_object.segment_dw_time#timeit.default_timer() - retx_start_time
                     lock.release()
                     # with open("/dev/SQUAD/retx_thread_decision",'a') as retx_state:
                     #        retx_state.write("retx_flag: {}, retx_seg_size: {},normal_url: {}\n".format(retx_flag, retx_seg_dw_object.segment_size, segment_url))
@@ -882,6 +883,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         with open("/dev/SQUAD/retx_API_proof.txt", 'a') as rtx_api_proof:
                             rtx_api_proof.write("retx_seg_info: {}\n".format(retx_segment_info))
                         segment_size = retx_seg_dw_object.segment_size  # lock this as this is given to emperical_dash.py
+                        segment_download_time = retx_seg_dw_object.segment_dw_time
                         '''TODO: Write json to buffer'''
                         dash_player.write(retx_segment_info)
                         # del retx_seg_dw_object
@@ -914,7 +916,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             retx_seg_dw_object = SegmentDownloadStats()
             config_dash.LOG.info(
                 "{}: Started downloading retx_segment {}".format(playback_type.upper(), retx_segment_url))
-            retx_start_time = timeit.default_timer()
+            #retx_start_time = timeit.default_timer()
             try:
                 if (not thread_retx.is_alive()):
                     config_dash.LOG.info(
@@ -963,19 +965,19 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                     if seg_done_q.qsize() > 0:
                         lock.acquire()
                         seg_dw_object = seg_done_q.get()
-                        segment_download_time = seg_dw_object.segment_dw_time#timeit.default_timer() - start_time
+                        segment_download_time = seg_dw_object.segment_dw_time #timeit.default_timer() - start_time
                         lock.release()
                     # else:
                     # seg_dw_object=None
                     seg_pending_q.put([segment_url, file_identifier])
-                    start_time = timeit.default_timer()
+                    #start_time = timeit.default_timer()
                     thread_seg = Process(target=download_segment, args=(seg_pending_q.get()))
                     # thread_seg=threading.Thread(target=download_segment,args=(seg_pending_q.get()))
                     thread_seg.start()
             # else:
             # seg_pending_q.put([segment_url, file_identifier])
             except (NameError, UnboundLocalError) as e: # (UnboundLocalError) as e:
-                start_time = timeit.default_timer()
+                #start_time = timeit.default_timer()
                 thread_seg = Process(target=download_segment, args=(segment_url, file_identifier,))
                 # thread_seg=threading.Thread(target=download_segment,args=(segment_url, file_identifier,))
                 thread_seg.start()
@@ -989,10 +991,11 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             config_dash.LOG.error("Unable to save segment %s" % e)
             return None
         ''' retx_seg_dw seperate and global (as one retx at a time) NO join?'''
-        segment_download_time = seg_dw_object.segment_dw_time # timeit.default_timer() - start_time #lock this as this is given to emperical_dash.py
+        #segment_download_time = seg_dw_object.segment_dw_time # timeit.default_timer() - start_time #lock this as this is given to emperical_dash.py
         ''' Create global and update in dw_seg()    (as one retx at a time)'''
         if seg_dw_object.segment_size > 0:
             segment_size = seg_dw_object.segment_size
+            segment_download_time = seg_dw_object.segment_dw_time
             config_dash.LOG.info("{}: Finished Downloaded segment {}".format(playback_type.upper(), segment_url))
             lock.acquire()
             segment_w_chunks.append(seg_dw_object.segment_chunk_rates)
