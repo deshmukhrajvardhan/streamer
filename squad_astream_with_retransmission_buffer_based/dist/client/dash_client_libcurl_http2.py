@@ -307,13 +307,13 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
     retx_segment_dw_rate = retx_seg_dw_object.segment_size * 8/retx_seg_dw_object.segment_dw_time
 
     with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_libcurl_HTTP2.txt', 'a') as chk:
-        chk.write("RETX:{}".format(segment_url))
+        chk.write("RETX:{}".format(retx_segment_url))
         for item in retx_seg_dw_object.segment_chunk_rates:
             chk.write(",{}".format(item))
         chk.write("\n")
     
     with open('/dev/SQUAD/segment_rate_squad_libcurl_HTTP2.txt', 'a') as chk:
-        chk.write("{},{}\n".format(segment_url,retx_segment_dw_rate))
+        chk.write("{},{}\n".format(retx_segment_url,retx_segment_dw_rate))
 
     # thread3.join()
     process3.join()
