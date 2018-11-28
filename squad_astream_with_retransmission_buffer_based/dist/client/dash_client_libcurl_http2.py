@@ -28,6 +28,7 @@ import timeit
 from string import ascii_letters, digits
 from argparse import ArgumentParser
 from multiprocessing import Process, Queue
+import multiprocessing
 from collections import defaultdict
 from adaptation import basic_dash, basic_dash2, weighted_dash, netflix_dash, empirical_dash, retransmission
 from adaptation.adaptation import WeightedMean
@@ -62,7 +63,9 @@ PLAYBACK = DEFAULT_PLAYBACK
 DOWNLOAD = False
 SEGMENT_LIMIT = None
 download_log_file = config_dash.DOWNLOAD_LOG_FILENAME
-lock = threading.Lock()
+# lock = threading.Lock()
+# multiprocessing lock
+lock = multiprocessing.Lock()
 retx_pending_q = Queue()
 retx_done_q = Queue()
 seg_pending_q = Queue()
