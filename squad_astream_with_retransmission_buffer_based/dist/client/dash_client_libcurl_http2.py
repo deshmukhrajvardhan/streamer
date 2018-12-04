@@ -319,7 +319,7 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
             chk.write(",{}".format(item))
         chk.write("\n")
         
-     with open('/dev/SQUAD/retx_seg_status_libcurl_HTTP2.txt', 'a') as chk:
+    with open('/dev/SQUAD/retx_seg_status_libcurl_HTTP2.txt', 'a') as chk:
         chk.write("RETX done:{},{}\n".format(retx_segment_url,retx_segment_dw_rate))
     
     with open('/dev/SQUAD/segment_rate_squad_libcurl_HTTP2.txt', 'a') as chk:
