@@ -268,6 +268,10 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
     key_c_retx_r = 362146
     key_c_retx_w = 462146
 
+    with open('/dev/SQUAD/retx_seg_status_libcurl_HTTP2.txt', 'a') as chk:
+        chk.write("RETX start:{}\n".format(retx_segment_url))
+
+
     try:
         mq_retx_w = sysv_ipc.MessageQueue(key_c_retx_r, sysv_ipc.IPC_CREAT, max_message_size=15000)
     except:
@@ -314,6 +318,9 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
         for item in retx_seg_dw_object.segment_chunk_rates:
             chk.write(",{}".format(item))
         chk.write("\n")
+        
+     with open('/dev/SQUAD/retx_seg_status_libcurl_HTTP2.txt', 'a') as chk:
+        chk.write("RETX done:{},{}\n".format(retx_segment_url,retx_segment_dw_rate))
     
     with open('/dev/SQUAD/segment_rate_squad_libcurl_HTTP2.txt', 'a') as chk:
         chk.write("{},{}\n".format(retx_segment_url,retx_segment_dw_rate))
