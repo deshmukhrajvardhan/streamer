@@ -263,8 +263,8 @@ int main(){
   int NUM_HANDLES = 2;
   CURL *easy[NUM_HANDLES];
   int i = 0;
-  int orig_done = 1;
-  int retx_done = 1;
+  //  int orig_done = 1;
+  //int retx_done = 1;
   int corner_case = NO_HANDLE;
   int j = 0;
   
@@ -276,22 +276,21 @@ int main(){
   chunk.size = 0;    /* no data at this point */
   retx_chunk.memory = (char*) malloc(1);  /* will be grown as needed by the realloc above */
   retx_chunk.size = 0;    /* no data at this point */
-  orig_done=0;
-  retx_done=0;
-  uint64 orig_url_to_multi_perf = 0, orig_multi_perf_to_done = 0;
-  uint64 retx_url_to_multi_perf = 0, retx_multi_perf_to_done = 0;
+  //orig_done=0;
+  //retx_done=0;
+  uint64 orig_multi_perf_to_done = 0;
+  uint64 retx_multi_perf_to_done = 0;
   i = 0;                                                           
   do {
     // diff condition
     if (orig_easy==0){
-    orig_url_to_multi_perf = GetTimeMs64();
     std::future<int> future_orig_r = std::async(ReadMsg, myfifor_orig,myfifow_orig, stream_send, key_c_orig_r);
     int read_ret_orig = future_orig_r.get();
     //int read_ret_orig = ReadMsg(myfifor_orig,myfifow_orig, stream_send, key_c_orig_r);
     //std::cout<<"\nurl:"<<read_ret_orig<<std::endl;
-    if (read_ret_orig==-2) {
+    /*    if (read_ret_orig==-2) {
       break;
-    }
+      }*/
     if (read_ret_orig==1) {
       //std::cout<<"\nurl:"<<read_ret_orig<<std::endl;
       //add url to easy handle and multi handle
@@ -309,22 +308,21 @@ int main(){
       curl_easy_setopt(easy[ORIG_EASY], CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
       curl_easy_setopt(easy[ORIG_EASY], CURLOPT_WRITEDATA, (void *)&chunk);
       curl_multi_add_handle(multi_handle, easy[ORIG_EASY]);
-      ++orig_easy;
-      std::cout<<"\nTime from ipc url read until 1st multi_perform:"<<GetTimeMs64()-orig_url_to_multi_perf<<"\n";
+      orig_easy=1;
+      //std::cout<<"\nTime from ipc url read until 1st multi_perform:"<<GetTimeMs64()-orig_url_to_multi_perf<<"\n";
       orig_multi_perf_to_done = GetTimeMs64();
-      curl_multi_perform(multi_handle, &handleChange.still_running);
+      //      curl_multi_perform(multi_handle, &handleChange.still_running);
       
     }
     }
     
      if (retx_easy==0){
     // #2 Thread
-    retx_url_to_multi_perf = GetTimeMs64();
     std::future<int> future_retx_r = std::async(ReadMsg, myfifor_retx,myfifow_retx, stream_send, key_c_retx_r);
     int read_ret_retx = future_retx_r.get();
-    if (read_ret_retx==-2) {
+    /*if (read_ret_retx==-2) {
       break;
-    }
+      }*/
     if (read_ret_retx==1) {
       //std::cout<<"\nRetx_url:"<<reidxad_ret_retx<<std::endl;
       //add url to easy handle and multi handle
@@ -347,15 +345,15 @@ int main(){
       /* we pass our 'chunk' struct to the callback function */
       curl_easy_setopt(easy[RETX_EASY], CURLOPT_WRITEDATA, (void *)&retx_chunk);
       curl_multi_add_handle(multi_handle, easy[RETX_EASY]);
-      ++retx_easy;
-      std::cout<<"\nTime from ipc url read until 1st multi_perform:"<<GetTimeMs64()-retx_url_to_multi_perf<<"\n";
+      retx_easy=1;
+      //std::cout<<"\nTime from ipc url read until 1st multi_perform:"<<GetTimeMs64()-retx_url_to_multi_perf<<"\n";
       retx_multi_perf_to_done = GetTimeMs64();
-      curl_multi_perform(multi_handle, &handleChange.still_running);
+      //curl_multi_perform(multi_handle, &handleChange.still_running);
     }
    }
     /* we start some action by calling perform right away */
     //int still_running;
-    if (orig_easy>0 || retx_easy>0){ // multiperform only if url set 
+    if (orig_easy==1 || retx_easy==1){ // multiperform only if url set 
       struct timeval timeout;
       int rc; /* select() return code */
       CURLMcode mc; /* curl_multi_fdset() return code */
@@ -468,6 +466,7 @@ int main(){
             }
 	    else {
 	      current_orig_handle = NO_HANDLE;
+	      printf("\n:Orig_no_Change\n");
             }
           }
           if(retx_easy>0) {
@@ -477,6 +476,7 @@ int main(){
             }
 	    else {
 	      current_retx_handle = NO_HANDLE;
+	      printf("\n:Retx_no_Change\n");
             }
           }
         }
@@ -489,7 +489,7 @@ int main(){
 	  printf("\n--------------Orig_Size: %.0f---------------\n", orig_content_len);
 
 	      //	      printf("\n--------------Orig_Size: %.0f---------------\n", cl_orig);
-                orig_done = 1;
+	  //orig_done = 1;
             //    printf("\nMain1:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,++handleChange.seg_num,handleChange.chunk_size);
                 //std::cout<<"\nTime from ipc url read till download completion:"<<GetTimeMs64()-orig_url_to_multi_perf<<"\n";
                 //std::cout<<"\nTime from easy_handle set till download completion:"<<GetTimeMs64()-orig_multi_perf_to_done<<"\n";
@@ -512,9 +512,10 @@ int main(){
         // memory assigned before it is actually needed        
                 chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
                 chunk.size = 0;    /* no data at this point */;
-                if(orig_easy>0) {
+                orig_easy=0;
+		/*if(orig_easy>0) {
                 --orig_easy;
-                }
+                }*/
             // TODO: remove later
                 current_orig_handle = NO_HANDLE;
             
@@ -523,7 +524,7 @@ int main(){
 	  printf("\n--------------Retx_Size: %.0f---------------\n", retx_content_len);
       
 	      //	      printf("\n--------------Retx_Size: %.0f---------------\n", cl_retx);
-                retx_done = 1;
+	  //retx_done = 1;
             //    printf("\nMain2:Write Still_running:%d,Segment num:%d,Size:%zu",handleChange.still_running,++handleChange.seg_num,handleChange.retx_chunk_size);
                 //std::cout<<"\n{Retx}Time from ipc url read till download completion:"<<GetTimeMs64()-retx_url_to_multi_perf<<"\n";
                 //std::cout<<"\n{RETX}Time from easy_handle set till download completion:"<<GetTimeMs64()-retx_multi_perf_to_done<<"\n";
@@ -550,9 +551,10 @@ int main(){
                 // memory assigned before it is actually needed  
                 retx_chunk.memory = (char *) malloc(1);  /* will be grown as needed by the realloc above */
                 retx_chunk.size = 0;    /* no data at this point */
-                if(retx_easy>0) {
+                retx_easy=0;
+		/*if(retx_easy>0) {
                     --retx_easy;
-                }
+		    }*/
                 // TODO: remove later
                 current_retx_handle = NO_HANDLE;
                 
