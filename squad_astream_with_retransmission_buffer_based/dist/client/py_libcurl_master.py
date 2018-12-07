@@ -71,7 +71,7 @@ def write_ipc(segment_url):
     process3 = Process(target=write_msg, args=(cmd1, mq_orig_w))
     process3.start()
     process3.join()
-    time.sleep(0.25)
+    #time.sleep(0.25)
 
 
 
@@ -211,7 +211,13 @@ def main(argv):
             "https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s16.m4s",
             "https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s17.m4s",
             "https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/2sec/bunny_4219897bps/BigBuckBunny_2s18.m4s"]
-            
+    low_urls = ["https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/2sec/bunny_3526922bps/BigBuckBunny_2s13.m4s",
+            "https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/2sec/bunny_3526922bps/BigBuckBunny_2s14.m4s",
+            "https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/2sec/bunny_3526922bps/BigBuckBunny_2s15.m4s",
+            "https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/2sec/bunny_3526922bps/BigBuckBunny_2s16.m4s",
+            "https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/2sec/bunny_3526922bps/BigBuckBunny_2s17.m4s",
+            "https://10.10.3.2/www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/2sec/bunny_3526922bps/BigBuckBunny_2s18.m4s"]
+
     if argv[1] == 'r':
         for i in urls:
             read_ipc(i)
@@ -219,9 +225,16 @@ def main(argv):
         for i in urls:
             write_ipc(i)
     elif argv[1] == 'retx':
-        for i in urls:
-            get_segment(i)
-            get_retx_segment(i)
+        for j in range(2):
+        #if True:                                                                                                                                                   
+            for i,j in zip(urls,low_urls):
+            #if True:                                                                                                                                               
+#                print("I:{},type:{}".format(i,type(i)))                                                                                                            
+                process1 = Process(target=get_segment, args=(i,))
+                process2 = Process(target=get_retx_segment, args=(j,))
+        
+        process1.join()
+    
     else:
         for i in urls:
             get_segment(i)        
