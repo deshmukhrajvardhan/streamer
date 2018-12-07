@@ -46,7 +46,7 @@ int ReadMsg(char *myfifor,char *myfifow, bool stream, key_t key){
   };
   mesg_buffer msg;
   int cmd;
-  msgid = msgget(key, 0666 | IPC_CREAT);
+  msgid = msgget(key, 0777 | IPC_CREAT);
   ssize_t numbytes=0;
   while (numbytes==0){
     //    numbytes=msgrcv(msgid, &msg, sizeof(msg.mesg_text),1,1);
@@ -82,7 +82,7 @@ int WriteMsg(string myfifow, int cmd, key_t key){
     long mesg_type;
     char mesg_text[128];
   } message;
-  msgid = msgget(key, 0666 | IPC_CREAT);
+  msgid = msgget(key, 0777 | IPC_CREAT);
   message.mesg_type = 1;
 
   if (cmd==1){
