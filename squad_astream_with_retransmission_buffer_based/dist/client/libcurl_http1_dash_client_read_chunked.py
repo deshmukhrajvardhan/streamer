@@ -234,7 +234,7 @@ def download_segment(segment_url, dash_folder):
         chk.write("{}".format(segment_url))
         for item in chunk_dl_rates:
             chk.write(",{}".format(item))
-            chk.write("\n")
+        chk.write("\n")
 
     segment_w_chunks.append(chunk_dl_rates)
 
