@@ -478,8 +478,8 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                             result_writer.writerow(str_stats)
 
             elif playback_type.upper() == "EMPIRICAL" :
-                buffer_upper = config_dash.NETFLIX_BUFFER_SIZE * BUFFER_THRESHOLD_UPPER
-                buffer_lower = config_dash.NETFLIX_BUFFER_SIZE * BUFFER_THRESHOLD_LOWER
+                buffer_upper = config_dash.NETFLIX_BUFFER_SIZE * BUFFER_THRESHOLD_UPPER #15*.6=9
+                buffer_lower = config_dash.NETFLIX_BUFFER_SIZE * BUFFER_THRESHOLD_LOWER #15*.4=6
                 #segment_sizes_test = get_segment_sizes(dp_object,segment_number)
                 #print "================"
                 #print segment_sizes_test
@@ -636,7 +636,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                             if header_row:
                                 result_writer.writerow(header_row)
                             result_writer.writerow(str_stats) 
-        segment_path = dp_list[segment][current_bitrate]
+        segment_path = dp_list[segment_number][current_bitrate]
+        #print("seg_path:{},dp seg:{},dp_list:{},segment_number:{}".format(segment_path,segment,dp_list,segment_number))
+        #exit()
         segment_url = urllib.parse.urljoin(domain, segment_path)
         #print "+++++++++++++"
         #print segment_path

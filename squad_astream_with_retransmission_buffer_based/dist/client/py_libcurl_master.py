@@ -297,8 +297,9 @@ def main(argv):
 #                print("I:{},type:{}".format(i,type(i)))                                                                                                            
                 process1 = Process(target=get_segment, args=(i,))
                 process2 = Process(target=get_retx_segment, args=(j,))
-        
-        process1.join()
+                process1.start()
+                process2.start()        
+                process1.join()
     
     elif argv[1]=='http2':
         for i in urls:
