@@ -507,7 +507,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 # with open('sara-dash-chosen-rate.txt', 'a') as sara:
                 # sara.write(str(current_bitrate) + '\t' + str(segment_download_rate) + '\n')
                 if not os.path.exists(download_log_file):
-                    header_row = "EpochTime, CurrentBufferSize, Bitrate, DownloadRate".split(",")
+                    header_row = "EpochTime,CurrentBufferSize,Bitrate,DownloadRate".split(",")
                     stats = (
                     (timeit.default_timer() - start_dload_time), str(dash_player.buffer.__len__()), current_bitrate,
                     segment_download_rate)
@@ -588,7 +588,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                     except IndexError as e:
                         config_dash.LOG.error(e)
                 if not os.path.exists(download_log_file):
-                    header_row = "EpochTime, CurrentBufferSize, Bitrate, DownloadRate".split(",")
+                    header_row = "EpochTime,CurrentBufferSize,Bitrate,DownloadRate".split(",")
                     stats = (
                     timeit.default_timer() - start_dload_time, str(dash_player.buffer.__len__()), current_bitrate,
                     segment_download_rate)
@@ -1039,7 +1039,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             dash_player.write(segment_info)
             '''TODO: Write seg_dw and retx_seg_dw stats'''
             if not os.path.exists(download_log_file):
-                header_row = "EpochTime, CurrentBufferSize, Bitrate, DownloadRate, SegmentNumber".split(",")
+                header_row = "EpochTime,CurrentBufferSize,Bitrate,DownloadRate,SegmentNumber".split(",")
                 stats = (timeit.default_timer() - start_dload_time, str(dash_player.buffer.__len__()), current_bitrate,
                          segment_download_rate, segment_number)
             else:
