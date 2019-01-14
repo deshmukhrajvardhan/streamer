@@ -435,7 +435,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     original_segment_number = 1
     while segment_number < len(dp_list):
         try:
-            while thread_seg.isAlive():  # and thread_retx.isAlive():
+            while thread_seg.is_alive():  # and thread_retx.is_alive():
                 pass
 
             # if retx_thread==True:
@@ -828,7 +828,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         # might consider doing retx_seg_dw_object = SegmentDownloadStats() earlier
 
         try:
-            if (not thread_retx.isAlive()):
+            if (not thread_retx.is_alive()):
                 if retx_done_q.qsize() > 0:
                     lock.acquire()
                     retx_seg_dw_object = retx_done_q.get()
@@ -901,7 +901,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         retx_flag = False  #
                         with open("/dev/SQUAD/retx_abandonment", 'a') as retx_abandon:
                             retx_abandon.write(
-                                "Abandoned Retx, not writing in the buffer, retx_url:{}\n".format(thread_retx.isAlive(),
+                                "Abandoned Retx, not writing in the buffer, retx_url:{}\n".format(thread_retx.is_alive(),
                                                                                                   retx_segment_url))
 
 
@@ -919,7 +919,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 "{}: Started downloading retx_segment {}".format(playback_type.upper(), retx_segment_url))
             retx_start_time = timeit.default_timer()
             try:
-                if (not thread_retx.isAlive()):
+                if (not thread_retx.is_alive()):
                     if retx_done_q.qsize() > 0:
                         lock.acquire()
                         retx_seg_dw_object = retx_done_q.get()
@@ -976,7 +976,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             with open("/dev/SQUAD/dw_cnt", 'a') as dw_cnt:
                 dw_cnt.write("{}\n".format(normal_dw_count))
             try:
-                if (not thread_seg.isAlive()):
+                if (not thread_seg.is_alive()):
                     if seg_queue.qsize() > 0:
                         lock.acquire()
                         seg_dw_object = seg_done_q.get()
