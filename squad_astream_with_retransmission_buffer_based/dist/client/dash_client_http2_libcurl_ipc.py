@@ -27,7 +27,7 @@ import errno
 import timeit
 from string import ascii_letters, digits
 from argparse import ArgumentParser
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Lock
 from collections import defaultdict
 from adaptation import basic_dash, basic_dash2, weighted_dash, netflix_dash, empirical_dash, retransmission
 from adaptation.adaptation import WeightedMean
@@ -63,7 +63,7 @@ DOWNLOAD = False
 SEGMENT_LIMIT = None
 # connection = requests.Session()
 download_log_file = config_dash.DOWNLOAD_LOG_FILENAME
-lock = threading.Lock()
+lock = Lock()
 retx_pending_q = Queue()
 retx_done_q = Queue()
 seg_pending_q = Queue()
@@ -937,7 +937,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                     config_dash.LOG.info("{}: 2nd downloading territory retx_segment {}".format(playback_type.upper(),
                                                                                                 retx_seg_dw_object))
                     retx_flag = False  # set before starting retx
-                    thread_retx = threading.Thread(target=retx_download_segment, args=(
+                    thread_retx = Process(target=retx_download_segment, args=(
                     retx_segment_url, file_identifier, retrans_next_segment_size, video_segment_duration,
                     dash_player.current_play_segment, retx_segment_number))
                     thread_retx.start()
@@ -951,7 +951,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 config_dash.LOG.info(
                     "{}: Started downloading 1st retx_segment {}".format(playback_type.upper(), retx_segment_url))
                 retx_flag = False
-                thread_retx = threading.Thread(target=retx_download_segment, args=(
+                thread_retx = Process(target=retx_download_segment, args=(
                 retx_segment_url, file_identifier, retrans_next_segment_size, video_segment_duration,
                 dash_player.current_play_segment, retx_segment_number))
                 thread_retx.start()
@@ -991,7 +991,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         time_till_next_get = start_time - download_done_time
                     except:
                         time_till_next_get = 0
-                    thread_seg = threading.Thread(target=download_segment, args=(seg_pending_q.get()))
+                    thread_seg = Process(target=download_segment, args=(seg_pending_q.get()))
                     thread_seg.start()
                 else:
                     seg_pending_q.put([segment_url, file_identifier])
@@ -1001,7 +1001,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                     time_till_next_get = start_time - download_done_time
                 except:
                     time_till_next_get = 0
-                thread_seg = threading.Thread(target=download_segment, args=(segment_url, file_identifier,))
+                thread_seg = Process(target=download_segment, args=(segment_url, file_identifier,))
                 thread_seg.start()
                 seg_dw_object = seg_done_q.get()
                 download_done_time = timeit.default_timer()
