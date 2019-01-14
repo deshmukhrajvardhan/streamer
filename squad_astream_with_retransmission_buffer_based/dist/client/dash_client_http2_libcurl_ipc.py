@@ -37,6 +37,7 @@ import dash_buffer
 from configure_log_file import configure_log_file, write_json
 import time
 import threading
+import sysv_ipc
 
 try:
     WindowsError
