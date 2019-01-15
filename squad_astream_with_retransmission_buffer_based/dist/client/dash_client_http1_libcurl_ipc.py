@@ -14,14 +14,16 @@ Testing:
 """
 from __future__ import division
 import read_mpd
-import urlparse
-import urllib2
-import urllib3
-from urllib3 import HTTPConnectionPool
+import hyper
+#import urlparse
+#import urllib2
+#import urllib3
+#from urllib3 import HTTPConnectionPool
 from contextlib import closing
 import io
 import httplib2
-import urlparse
+import urllib
+#import urllib.parse.urllib.parse.urlparse as urllib.parse.urlparse
 import random
 import os
 import csv
@@ -41,10 +43,10 @@ from configure_log_file import configure_log_file, write_json
 import time
 import sysv_ipc
 
-try:
-    WindowsError
-except NameError:
-    from shutil import WindowsError
+#try:
+#    WindowsError
+#except NameError:
+#    from shutil import WindowsError
 
 # Constants
 DEFAULT_PLAYBACK = 'BASIC'
@@ -61,8 +63,8 @@ LIST = False
 PLAYBACK = DEFAULT_PLAYBACK
 DOWNLOAD = False
 SEGMENT_LIMIT = None
-connection = requests.Session()
-connection.cert = '/dev/SQUAD/cert.crt'
+#connection = requests.Session()
+#connection.cert = '/dev/SQUAD/cert.crt'
 download_log_file = config_dash.DOWNLOAD_LOG_FILENAME
 
 
@@ -88,10 +90,12 @@ def write_msg(list_cmd, mq):
 
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
-    global connection
+    #global connection
+    connection = requests.Session()
     try:
 
-        # parse_url = urlparse.urlparse(url)
+        
+        #parse_url = urlparse.urlparse(url)
         '''
         combine_url = str.join((parse_url.scheme, "://",parse_url.netloc))
         config_dash.LOG.info("DASH URL %s" %combine_url)
@@ -99,37 +103,90 @@ def get_mpd(url):
         conn_mpd = connection.request('GET', combine_url)
         config_dash.LOG.info("MPD URL %s" %parse_url.path)
         '''
-        # connection = HTTPConnectionPool(parse_url.netloc)
-        mpd_conn = connection.get(url, cert='/dev/SQUAD/cert.pem')
+        #connection = HTTPConnectionPool(parse_url.netloc)
+        mpd_conn = connection.get(url, cert='/dev/SQUAD/cert.pem') 
 
-    except urllib2.HTTPError, error:
-        config_dash.LOG.error("Unable to download MPD file HTTP Error: %s" % error.code)
-        return None
-    except urllib2.URLError:
-        error_message = "URLError. Unable to reach Server.Check if Server active"
-        config_dash.LOG.error(error_message)
-        print
-        error_message
-        return None
-    except IOError, httplib.HTTPException:
-        message = "Unable to , file_identifierdownload MPD file HTTP Error."
-        config_dash.LOG.error(message)
-        return None
-
-    # mpd_data = mpd_conn.read()
-
-    # connection.close()
+#    except (urllib2.HTTPError) as error:
+#        config_dash.LOG.error("Unable to download MPD file HTTP Error: %s" % error.code)
+#        return None
+    #except (urllib2.URLError) as e:
+     #   error_message = "URLError. Unable to reach Server.Check if Server active"
+     #   config_dash.LOG.error(error_message)
+     #   print(error_message)
+     #   return None
+    except Exception as e:
+        print(e)
+#    except (IOError, httplib.HTTPException) as e:
+#        message = "Unable to , file_identifierdownload MPD file HTTP Error."
+#        config_dash.LOG.error(message)
+#        return None
+    
+    #mpd_data = mpd_conn.read()
+    
+    #connection.close()
     mpd_file = url.split('/')[-1]
-
-    mpd_file_handle = open(mpd_file, 'wb')
+    
+    mpd_file_handle = open(mpd_file, 'w')
 
     mpd_file_handle.write(mpd_conn.text)
     mpd_file_handle.close()
     mpd_conn.close()
-    # mpd_conn.release_conn()
-    # config_dash.LOG.info(mpd_conn.data)
+    #mpd_conn.release_conn()
+    #config_dash.LOG.info(mpd_conn.data)
     config_dash.LOG.info("Downloaded the MPD file {}".format(mpd_file))
     return mpd_file
+
+
+
+def l_get_mpd(url):
+    """ Module to download the MPD from the URL and save it to file"""
+    #global connection
+    try:
+        global ssl_context 
+        ssl_context = hyper.tls.init_context()
+        ssl_context.load_cert_chain(certfile='/dev/SQUAD/cert.crt', keyfile='/dev/SQUAD/cert.key')
+        ssl_context.load_verify_locations(cafile='/dev/SQUAD/cert.pem')
+        parse_url = urllib.parse.urlparse(url)
+        print("___________++++")
+        print(parse_url.netloc, parse_url.path)
+        connection = hyper.HTTP11Connection(parse_url.netloc, ssl_context=ssl_context, secure=True, port=9000)
+        connection.network_buffer_size = DOWNLOAD_CHUNK
+        http11_conn = connection.request('GET',parse_url.path)
+        mpd_conn=connection.get_response()
+
+    except urllib.request.HTTPError as error:
+        config_dash.LOG.error("Unable to download MPD file HTTP Error: %s" % error.code)
+        return None
+    except urllib.request.URLError:
+        error_message = "URLError. Unable to reach Server.Check if Server active"
+        config_dash.LOG.error(error_message)
+        print(error_message)
+        return None
+    #except (IOError,httplib.HTTPException) as e1:
+    #    message = "Unable to , file_identifierdownload MPD file HTTP Error."
+    #    config_dash.LOG.error(message)
+    #    return None
+
+    mpd_file = url.split('/')[-1]
+    i=0
+    t=[]
+    chunk_dl_rates=[]
+    mpd_file_handle = open(mpd_file, 'wb')
+    chunk_start_time = timeit.default_timer()
+    segment_size=0
+    chunk_number=0
+    total_data_dl_time=0
+    for mpd_data in mpd_conn.read_chunked_give_size(DOWNLOAD_CHUNK):
+        if (mpd_data is -1):
+            break
+            
+        mpd_file_handle.write(mpd_data)
+
+    mpd_file_handle.close()
+    mpd_conn.close()
+    config_dash.LOG.info("Downloaded the MPD file {}".format(mpd_file))
+    return mpd_file
+
 
 
 def get_bandwidth(data, duration):
@@ -142,7 +199,7 @@ def get_domain_name(url):
     """ Module to obtain the domain name from the URL
         From : http://stackoverflow.com/questions/9626535/get-domain-name-from-url
     """
-    parsed_uri = urlparse.urlparse(url)
+    parsed_uri = urllib.parse.urlparse(url)
     domain = '{uri.scheme}://{uri.netloc}/'.format(uri=parsed_uri)
     return domain
 
@@ -154,7 +211,82 @@ def id_generator(id_size=6):
     return 'TEMP_' + ''.join(random.choice(ascii_letters + digits) for _ in range(id_size))
 
 
+
 def download_segment(segment_url, dash_folder):
+    """ Module to download the segment """
+    #parse_url = urlparse.urlparse(segment_url)
+    #connection = HTTPConnectionPool(parse_url.netloc)
+    #chunk_dl_rates = []
+    connection = requests.Session()
+    parsed_uri = urllib.parse.urlparse(segment_url)
+    segment_path = '{uri.path}'.format(uri=parsed_uri)
+    while segment_path.startswith('/'):
+        segment_path = segment_path[1:]        
+    segment_filename = os.path.join(dash_folder, os.path.basename(segment_path))
+    make_sure_path_exists(os.path.dirname(segment_filename))
+    #segment_file_handle = open(segment_filename, 'wb')
+    chunk_dl_rates = []
+    segment_size = 0
+    try:
+        #print segment_url
+        total_data_dl_time = 0
+        #connection = requests.Session()
+        #connection.cert='/dev/SQUAD/cert.crt'
+        chunk_number = 0
+        chunk_start_time = timeit.default_timer()
+        with closing(connection.get(segment_url, cert='/dev/SQUAD/cert.pem', stream=True)) as seg_conn:
+            with open(segment_filename,'w') as segment_file_handle:
+                for segment_data in seg_conn.iter_content(DOWNLOAD_CHUNK):
+                    if segment_data is None:
+                        break
+                    #segment_file_handle.write(segment_data)
+                    segment_size += len(segment_data)
+                    if len(segment_data) < DOWNLOAD_CHUNK:
+                        timenow = timeit.default_timer()
+                        chunk_dl_time = timenow - chunk_start_time
+                        chunk_number += 1
+                        total_data_dl_time += chunk_dl_time
+                        current_chunk_dl_rate = segment_size * 8 / total_data_dl_time
+                        chunk_dl_rates.append(current_chunk_dl_rate)
+                        with open('/dev/SQUAD/chunk_rate_iter_squad_requests_HTTP1.txt','a') as chk:
+                            chk.write("%s" %segment_url)
+                            for item in chunk_dl_rates:
+                                chk.write(",%s" %item)
+                            chk.write("\n")
+
+                        #print chunk_dl_rates
+                        #print "-----------------"
+                        #print segment_w_chunks
+                        #print "!!!!!!!!!!!!!!!!!"
+                        segment_w_chunks.append(chunk_dl_rates)
+                        #print segment_w_chunks
+                        #print "##################"
+                        break
+                    timenow = timeit.default_timer()
+                    chunk_dl_time = timenow - chunk_start_time
+                    total_data_dl_time += chunk_dl_time
+                    current_chunk_dl_rate = segment_size * 8 / total_data_dl_time
+                    chunk_start_time = timenow
+                    chunk_number += 1
+                    chunk_dl_rates.append(current_chunk_dl_rate)
+
+    except (urllib2.HTTPError) as error:
+        config_dash.LOG.error("Unable to download DASH Segment {} HTTP Error:{} ".format(segment_url, str(error.code)))
+        return None
+    #except requests.exceptions.ResponseNotChunked:
+     #   return None
+    
+    
+    #connection.close()
+    #seg_conn.release_conn()
+    seg_conn.close()
+    segment_file_handle.close()
+
+    return segment_size, segment_filename, segment_w_chunks
+
+
+
+def ipc_download_segment(segment_url, dash_folder):
     """ Module to download the segment """
     parsed_uri = urllib.parse.urlparse(segment_url)
     segment_path = '{uri.path}'.format(uri=parsed_uri)
@@ -223,7 +355,7 @@ def get_media_all(domain, media_info, file_identifier, done_queue):
     media_start_time = timeit.default_timer()
     for segment in [media.initialization] + media.url_list:
         start_time = timeit.default_timer()
-        segment_url = urlparse.urljoin(domain, segment)
+        segment_url = urllib.parse.urlparse.urljoin(domain, segment)
         _, segment_file, _ = download_segment(segment_url, file_identifier)
         elapsed = timeit.default_timer() - start_time
         if segment_file:
@@ -291,8 +423,8 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         for segment_count, segment_url in enumerate(media_urls, dp_object.video[bitrate].start):
             # segment_duration = dp_object.video[bitrate].segment_duration
             dp_list[segment_count][bitrate] = segment_url
-    bitrates = dp_object.video.keys()
-    bitrates.sort()
+    bitrates = sorted(dp_object.video.keys())
+    #bitrates.sort()
     average_dwn_time = 0
     segment_files = []
     # For basic adaptation
@@ -372,7 +504,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                                                                              segment_size, segment_download_time,
                                                                              get_segment_sizes(dp_object,
                                                                                                segment_number + 1))
-                    except IndexError, e:
+                    except (IndexError) as e:
                         config_dash.LOG.error(e)
                 # with open('sara-dash-chosen-rate.txt', 'a') as sara:
                 # sara.write(str(current_bitrate) + '\t' + str(segment_download_rate) + '\n')
@@ -407,7 +539,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                             bitrates, dash_player, segment_download_rate, current_bitrate, average_segment_sizes,
                             netflix_rate_map, netflix_state)
                         config_dash.LOG.info("NETFLIX: Next bitrate = {}".format(current_bitrate))
-                    except IndexError, e:
+                    except (IndexError) as e:
                         config_dash.LOG.error(e)
                 else:
                     config_dash.LOG.critical("Completed segment playback for Netflix")
@@ -455,7 +587,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                             segment_download_rate = segment_size / segment_download_time
                         else:
                             segment_download_rate = 0
-                    except IndexError, e:
+                    except (IndexError) as e:
                         config_dash.LOG.error(e)
                 if not os.path.exists(download_log_file):
                     header_row = "EpochTime,CurrentBufferSize,Bitrate,DownloadRate".split(",")
@@ -598,7 +730,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         RETRANSMISSION_SWITCH = True
                         original_segment_number = segment_number
                         original_current_bitrate = current_bitrate
-                        current_bitrate, segment_number = retransmission.retransmission(dp_object, current_bitrate,
+                        current_bitrate, segment_number,retx_flag = retransmission.retransmission(dp_object, current_bitrate,
                                                                                         segment_number,
                                                                                         dash_player.buffer, bitrates,
                                                                                         segment_download_rate,
@@ -642,7 +774,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 print
                 dp_list[segment][current_bitrate]
                 print
-                urlparse.urljoin(domain, segment_path)
+                urllib.parse.urljoin(domain, segment_path)
                 print
                 "-------------+++++++++++++"
                 if not os.path.exists(download_log_file):
@@ -656,13 +788,13 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                     timeit.default_timer() - start_dload_time, str(dash_player.buffer.__len__()), current_bitrate,
                     segment_download_rate, segment_number)
                 str_stats = [str(i) for i in stats]
-                with open(download_log_file, "ab") as log_file_handle:
+                with open(download_log_file, "a") as log_file_handle:
                     result_writer = csv.writer(log_file_handle, delimiter=",")
                     if header_row:
                         result_writer.writerow(header_row)
                     result_writer.writerow(str_stats)
         segment_path = dp_list[segment][current_bitrate]
-        segment_url = urlparse.urljoin(domain, segment_path)
+        segment_url = urllib.parse.urljoin(domain, segment_path)
         # print "+++++++++++++"
         # print segment_path
         # print segment_url
@@ -681,7 +813,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             config_dash.LOG.info("{}: Started downloading segment {}".format(playback_type.upper(), segment_url))
             segment_size, segment_filename, segment_w_chunks = download_segment(segment_url, file_identifier)
             config_dash.LOG.info("{}: Finished Downloaded segment {}".format(playback_type.upper(), segment_url))
-        except IOError, e:
+        except (IOError) as e:
             config_dash.LOG.error("Unable to save segment %s" % e)
             return None
         segment_download_time = timeit.default_timer() - start_time
@@ -784,7 +916,7 @@ def clean_files(folder_path):
                 if os.path.isfile(file_path):
                     os.unlink(file_path)
             os.rmdir(folder_path)
-        except (WindowsError, OSError), e:
+        except (WindowsError, OSError) as e:
             config_dash.LOG.info("Unable to delete the folder {}. {}".format(folder_path, e))
         config_dash.LOG.info("Deleted the folder '{}' and its contents".format(folder_path))
 
