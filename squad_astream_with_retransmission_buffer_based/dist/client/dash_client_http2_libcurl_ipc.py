@@ -63,7 +63,7 @@ DOWNLOAD = False
 SEGMENT_LIMIT = None
 # connection = requests.Session()
 download_log_file = config_dash.DOWNLOAD_LOG_FILENAME
-lock = Lock()
+lock = threading.Lock()#Lock()
 retx_pending_q = Queue()
 retx_done_q = Queue()
 seg_pending_q = Queue()
@@ -224,9 +224,9 @@ def download_segment(segment_url, dash_folder):
 
     chunk_number = 0
     total_data_dl_time = 0
-    # process3 = Process(target=write_msg, args=(cmd1, mq_orig_w))
-    # process3.start()
-    write_msg(cmd1, mq_orig_w)
+    process3 = threading.Thread(target=write_msg, args=(cmd1, mq_orig_w))
+    process3.start()
+    #write_msg(cmd1, mq_orig_w)
     chunk_start_time = timeit.default_timer()
 
     while True:
@@ -253,7 +253,7 @@ def download_segment(segment_url, dash_folder):
         chk.write("\n")
 
     ''' Use Queue to get the seg_dw_object'''
-    # process3.join()
+    process3.join()
 
     seg_done_q.put(seg_dw_object)
     return
@@ -287,7 +287,9 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
     # thread3=threading.Thread(target=write_msg,args=(cmd1,mqw1))
     # process3 = Process(target=write_msg, args=(cmd1, mq_retx_w))
     # process3.start()
-    write_msg(cmd1, mq_retx_w)
+    process3=threading.Thread(target=write_msg,args=(cmd1,mq_retx_w))
+    process3.start()
+    #write_msg(cmd1, mq_retx_w)
     chunk_start_time = timeit.default_timer()
 
     while True:
@@ -313,6 +315,7 @@ def retx_download_segment(retx_segment_url, dash_folder, retrans_next_segment_si
             chk.write(",{}".format(item))
         chk.write("\n")
 
+    process3.join()
     ''' Use Queue to get the retx_seg_dw_object'''
     # if len(retx_seg_dw_object.segment_chunk_rates):
     retx_done_q.put(retx_seg_dw_object)
@@ -937,7 +940,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                     config_dash.LOG.info("{}: 2nd downloading territory retx_segment {}".format(playback_type.upper(),
                                                                                                 retx_seg_dw_object))
                     retx_flag = False  # set before starting retx
-                    thread_retx = Process(target=retx_download_segment, args=(
+                    thread_retx = threading.Thread(target=retx_download_segment, args=(
                     retx_segment_url, file_identifier, retrans_next_segment_size, video_segment_duration,
                     dash_player.current_play_segment, retx_segment_number))
                     thread_retx.start()
@@ -951,7 +954,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 config_dash.LOG.info(
                     "{}: Started downloading 1st retx_segment {}".format(playback_type.upper(), retx_segment_url))
                 retx_flag = False
-                thread_retx = Process(target=retx_download_segment, args=(
+                thread_retx = threading.Thread(target=retx_download_segment, args=(
                 retx_segment_url, file_identifier, retrans_next_segment_size, video_segment_duration,
                 dash_player.current_play_segment, retx_segment_number))
                 thread_retx.start()
@@ -991,7 +994,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         time_till_next_get = start_time - download_done_time
                     except:
                         time_till_next_get = 0
-                    thread_seg = Process(target=download_segment, args=(seg_pending_q.get()))
+                    thread_seg = threading.Thread(target=download_segment, args=(seg_pending_q.get()))
                     thread_seg.start()
                 else:
                     seg_pending_q.put([segment_url, file_identifier])
@@ -1001,7 +1004,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                     time_till_next_get = start_time - download_done_time
                 except:
                     time_till_next_get = 0
-                thread_seg = Process(target=download_segment, args=(segment_url, file_identifier,))
+                thread_seg = threading.Thread(target=download_segment, args=(segment_url, file_identifier,))
                 thread_seg.start()
                 seg_dw_object = seg_done_q.get()
                 download_done_time = timeit.default_timer()

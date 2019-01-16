@@ -42,7 +42,7 @@ import requests
 from configure_log_file import configure_log_file, write_json
 import time
 import sysv_ipc
-
+import threading
 #try:
 #    WindowsError
 #except NameError:
@@ -88,7 +88,7 @@ def write_msg(list_cmd, mq):
     return
 
 
-def get_mpd(url):
+def l_get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
     #global connection
     connection = requests.Session()
@@ -138,7 +138,7 @@ def get_mpd(url):
 
 
 
-def l_get_mpd(url):
+def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
     #global connection
     try:
@@ -212,7 +212,7 @@ def id_generator(id_size=6):
 
 
 
-def download_segment(segment_url, dash_folder):
+def l_download_segment(segment_url, dash_folder):
     """ Module to download the segment """
     #parse_url = urlparse.urlparse(segment_url)
     #connection = HTTPConnectionPool(parse_url.netloc)
@@ -286,7 +286,7 @@ def download_segment(segment_url, dash_folder):
 
 
 
-def ipc_download_segment(segment_url, dash_folder):
+def download_segment(segment_url, dash_folder):
     """ Module to download the segment """
     parsed_uri = urllib.parse.urlparse(segment_url)
     segment_path = '{uri.path}'.format(uri=parsed_uri)
@@ -345,6 +345,71 @@ def ipc_download_segment(segment_url, dash_folder):
     segment_w_chunks.append(chunk_dl_rates)
 
     return segment_size, segment_filename, segment_w_chunks
+
+
+def thread_download_segment(segment_url, dash_folder):
+    """ Module to download the segment """
+    parsed_uri = urllib.parse.urlparse(segment_url)
+    segment_path = '{uri.path}'.format(uri=parsed_uri)
+    while segment_path.startswith('/'):
+        segment_path = segment_path[1:]
+    segment_filename = os.path.join(dash_folder, os.path.basename(segment_path))
+    make_sure_path_exists(os.path.dirname(segment_filename))
+
+    print(segment_url)
+    cmd1 = [segment_url]
+
+    key_c_orig_r = 662144
+    key_c_orig_w = 662145
+
+    try:
+        mq_orig_w = sysv_ipc.MessageQueue(key_c_orig_r, sysv_ipc.IPC_CREAT, max_message_size=15000)
+    except:
+        print("ERROR: Queue not created")
+    try:
+        mq_orig_r = sysv_ipc.MessageQueue(key_c_orig_w, sysv_ipc.IPC_CREAT, max_message_size=15000)
+    except:
+        print("ERROR: mq_orig_r Queue not created")
+
+    total_data_dl_time = 0
+    chunk_dl_rates = []
+    segment_size = 0
+
+    #write_msg(cmd1, mq_orig_w)
+    thread3=threading.Thread(target=write_msg,args=(cmd1, mq_orig_w))
+    thread3.start()
+    chunk_number = 0
+    chunk_start_time = timeit.default_timer()
+
+    while True:
+        (message, prior) = mq_orig_r.receive()
+        m = message.split(b':')
+        # print("Reply:{}, content-length:{}\n".format(message,m[1]))
+        # chunk_sizes.append(float(m[1]))
+        if m[0] != b'end':
+
+            segment_size += float(m[1])
+            timenow = timeit.default_timer()
+            chunk_dl_time = timenow - chunk_start_time
+            chunk_start_time = timenow
+            chunk_number += 1
+            total_data_dl_time += chunk_dl_time
+            current_chunk_dl_rate = segment_size * 8 / total_data_dl_time
+            chunk_dl_rates.append(current_chunk_dl_rate)
+        else:
+            break
+
+    with open('/dev/SQUAD/chunk_rate_read_mod_chunk_squad_libcurl_HTTP1.txt', 'a') as chk:
+        chk.write("{}".format(segment_url))
+        for item in chunk_dl_rates:
+            chk.write(",{}".format(item))
+        chk.write("\n")
+
+    segment_w_chunks.append(chunk_dl_rates)
+
+    thread3.join()
+    return segment_size, segment_filename, segment_w_chunks
+
 
 
 def get_media_all(domain, media_info, file_identifier, done_queue):
