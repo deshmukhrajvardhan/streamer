@@ -267,6 +267,7 @@ int main(){
                 curl_easy_setopt(easy[ORIG_EASY], CURLOPT_CAINFO, "cert.pem");
                 curl_easy_setopt(easy[ORIG_EASY], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
                 curl_easy_setopt(easy[ORIG_EASY], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+		curl_easy_setopt(easy[ORIG_EASY], CURLOPT_SSL_VERIFYHOST, 0);
                 curl_easy_setopt(easy[ORIG_EASY], CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
                 curl_easy_setopt(easy[ORIG_EASY], CURLOPT_WRITEDATA, (void *)&chunk);
                 curl_multi_add_handle(multi_handle, easy[ORIG_EASY]);
