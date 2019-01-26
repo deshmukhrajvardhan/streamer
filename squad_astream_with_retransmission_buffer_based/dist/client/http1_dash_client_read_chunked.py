@@ -79,6 +79,8 @@ def get_mpd(url):
     global connection
     try:
         global ssl_context 
+	import ssl
+        ssl.match_hostname = lambda cert, hostname: True
         ssl_context = hyper.tls.init_context()
         ssl_context.load_cert_chain(certfile='/dev/SQUAD/cert.crt', keyfile='/dev/SQUAD/cert.key')
         ssl_context.load_verify_locations(cafile='/dev/SQUAD/cert.pem')
