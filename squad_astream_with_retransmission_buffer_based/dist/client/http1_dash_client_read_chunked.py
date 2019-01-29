@@ -78,8 +78,8 @@ def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
     global connection
     try:
-        global ssl_context 
-	import ssl
+        global ssl_context
+        import ssl
         ssl.match_hostname = lambda cert, hostname: True
         ssl_context = hyper.tls.init_context()
         ssl_context.load_cert_chain(certfile='/dev/SQUAD/cert.crt', keyfile='/dev/SQUAD/cert.key')
