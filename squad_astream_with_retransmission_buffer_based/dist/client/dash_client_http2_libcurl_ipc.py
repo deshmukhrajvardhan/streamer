@@ -1012,10 +1012,10 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 download_done_time = timeit.default_timer()
                 segment_download_time = download_done_time - start_time
             # seg_dw_object = download_segment(segment_url, file_identifier)
-            segment_size = seg_dw_object.segment_size  # lock this as this is given to emperical_dash.py
+            #segment_size = seg_dw_object.segment_size  # lock this as this is given to emperical_dash.py
             ''' lock apped into segment_w_chunks'''
-            segment_w_chunks.append(seg_dw_object.segment_chunk_rates)
-            config_dash.LOG.info("{}: Finished Downloaded segment {}".format(playback_type.upper(), segment_url))
+            #segment_w_chunks.append(seg_dw_object.segment_chunk_rates)
+            #config_dash.LOG.info("{}: Finished Downloaded segment {}".format(playback_type.upper(), segment_url))
         except IOError as e:
             config_dash.LOG.error("Unable to save segment %s" % e)
             return None
@@ -1025,6 +1025,10 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         ''' Create global and update in dw_seg()    (as one retx at a time)'''
         if seg_dw_object.segment_size > 0:
             segment_download_rate = seg_dw_object.segment_size / segment_download_time
+            segment_size = seg_dw_object.segment_size  # lock this as this is given to emperical_dash.py
+            ''' lock apped into segment_w_chunks'''
+            segment_w_chunks.append(seg_dw_object.segment_chunk_rates)
+            config_dash.LOG.info("{}: Finished Downloaded segment {}".format(playback_type.upper(), segment_url))
             # with open('/dev/SQUAD/hyper_http2_read_mod_chunk_seg_time_rate.txt', 'a') as rate_f:
             #    rate_f.write(str(segment_size)+'\t'+str(segment_download_time)+'\t'+str(segment_download_rate*8)+'\n')
             previous_segment_times.append(segment_download_time)
