@@ -982,7 +982,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 dw_cnt.write("{}\n".format(normal_dw_count))
             try:
                 if (not thread_seg.is_alive()):
-                    if seg_queue.qsize() > 0:
+                    if seg_done_q.qsize() > 0:
                         lock.acquire()
                         seg_dw_object = seg_done_q.get()
                         download_done_time = timeit.default_timer()
