@@ -300,8 +300,8 @@ def download_segment(segment_url, dash_folder):
     print(segment_url)
     cmd1 = [segment_url]
 
-    key_c_orig_r = 662144
-    key_c_orig_w = 662145
+    key_c_orig_r = 262144
+    key_c_orig_w = 262145
 
     try:
         mq_orig_w = sysv_ipc.MessageQueue(key_c_orig_r, sysv_ipc.IPC_CREAT, max_message_size=15000)
@@ -361,8 +361,8 @@ def thread_download_segment(segment_url, dash_folder):
     print(segment_url)
     cmd1 = [segment_url]
 
-    key_c_orig_r = 662144
-    key_c_orig_w = 662145
+    key_c_orig_r = 262144
+    key_c_orig_w = 262145
 
     try:
         mq_orig_w = sysv_ipc.MessageQueue(key_c_orig_r, sysv_ipc.IPC_CREAT, max_message_size=15000)
