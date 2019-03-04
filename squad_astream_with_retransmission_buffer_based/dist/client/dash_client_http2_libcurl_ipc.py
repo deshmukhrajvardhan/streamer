@@ -848,6 +848,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         # retx_thread = False # retx_thread free
                         # with open("/dev/SQUAD/retx_abandonment",'a') as retx_abandon:
                         # retx_abandon.write("Retx of seg {}\n".format(retx_seg_dw_object.segment_filename))
+                        retx_seg_dw_object.segment_size*=8
                         config_dash.LOG.info(
                             "{}: Downloaded debug Retxsegment {} Chunk Rate len {}".format(playback_type.upper(),
                                                                                            retx_segment_url, len(
@@ -970,7 +971,6 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 dw_cnt.write("{}\n".format(normal_dw_count))
 
             try:
-                thread_seg
                 if not thread_seg.is_alive():
                     if seg_done_q.qsize() > 0:
                         lock.acquire()
@@ -1004,6 +1004,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         #segment_download_time = seg_dw_object.segment_dw_time # timeit.default_timer() - start_time #lock this as this is given to emperical_dash.py
         ''' Create global and update in dw_seg()    (as one retx at a time)'''
         if seg_dw_object.segment_size > 0:
+            seg_dw_object.segment_size*=8
             segment_size = seg_dw_object.segment_size
             segment_download_time = seg_dw_object.segment_dw_time
             config_dash.LOG.info("{}: Finished Downloaded segment {}".format(playback_type.upper(), segment_url))
