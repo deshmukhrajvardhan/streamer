@@ -879,6 +879,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         try:
             config_dash.LOG.info("{}: Started downloading segment {}".format(playback_type.upper(), segment_url))
             segment_size, segment_filename, segment_w_chunks = download_segment(segment_url, file_identifier)
+            segment_size*=8
             config_dash.LOG.info("{}: Finished Downloaded segment {}".format(playback_type.upper(), segment_url))
         except (IOError) as e:
             config_dash.LOG.error("Unable to save segment %s" % e)
